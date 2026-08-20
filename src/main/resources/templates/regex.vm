@@ -1,0 +1,13 @@
+#if($PACKAGE && $PACKAGE != "")
+package $PACKAGE;
+#end
+import org.jmod.dsl.regex.Regex;
+import $CLASS_CONFIGURATION;
+
+public class $CLASSNAME extends Regex<$CLASS_CONFIGURATION_SIMPLE> {
+    private static final String _regex = "$REGEX";
+
+    public $CLASSNAME() {
+        super(_regex, new $CLASS_CONFIGURATION());
+    }
+}

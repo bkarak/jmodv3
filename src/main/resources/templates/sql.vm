@@ -1,0 +1,28 @@
+#if($PACKAGE && $PACKAGE != "")
+package $PACKAGE;
+#end
+import org.jmod.dsl.sql.SQLQuery;
+import $CLASS_CONFIGURATION;
+import java.sql.*;
+
+public class $CLASSNAME extends SQLQuery<$CLASS_CONFIGURATION_SIMPLE> {
+#foreach( $VDECL in $SQL_CODE_VAR_DECL )
+    private $VDECL;
+#end
+
+    public $CLASSNAME($SQL_CODE_CONSTRUCTOR) {
+        super(new $CLASS_CONFIGURATION());
+        this.sqlStatement = "$SQL_CODE";
+#foreach( $MAPPED_TYPES in $SQL_CODE_MAPPED_TYPES )
+        this.$MAPPED_TYPES.getVarName() = $MAPPED_TYPES.getVarName();
+#end
+    }
+
+    public PreparedStatement getStatement(Connection c) throws SQLException {
+        PreparedStatement pstmnt = c.prepareStatement(this.sqlStatement);
+#foreach( $STMNT in $SQL_CODE_PS_STATEMENTS )
+        pstmnt.$STMNT;
+#end
+        return pstmnt;
+    }
+}

@@ -1,0 +1,7 @@
+package examples.simplesql;
+
+import org.jmod.dsl.sql.SQLQuery;
+
+public external SelectExample extends SQLQuery<SimpleConf> {
+select * from sqlexample where sqle_primary = #[prim]<int>
+}
