@@ -5,16 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.StringWriter;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 
+import org.jmod.JmodPortsFixtures;
 import org.jmod.cmd.CompilerOption;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,24 +24,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  * <a href="https://github.com/bkarak/jmod-ports">bkarak/jmod-ports</a>.
  */
 class JmodPortsTest {
-    /**
-     * Original sources that are not valid J% (typos such as {@code imporg} in the published ports).
-     */
-    private static final Set<String> KNOWN_BROKEN = Set.of(
-            "benchmarking/jmod-sql-compiler/jmod-simple/org/jmod/CustomerSelect.jmod",
-            "benchmarking/jmod-sql-compiler/jmod-ns-aware/org/jmod/CustomerSelect.jmod",
-            "benchmarking/jmod-sql-security/jmod-simple/org/jmod/CustomerSelect.jmod");
-
-    static Stream<Path> jmodFiles() throws Exception {
-        return Files.walk(portsRoot())
-                .filter(path -> path.toString().endsWith(".jmod"))
-                .sorted();
-    }
-
     @ParameterizedTest(name = "{0}")
-    @MethodSource("jmodFiles")
-    void compilesEachPortFile(Path jmod, @TempDir Path scratch) throws Exception {
-        String relative = portsRoot().relativize(jmod).toString().replace('\\', '/');
+    @MethodSource("org.jmod.JmodPortsFixtures#allJmodArguments")
+    void compilesEachPortFile(String relative, Path jmod, @TempDir Path scratch) throws Exception {
         Path input = scratch.resolve("in");
         Path output = scratch.resolve("out");
         Files.createDirectories(input);
@@ -61,7 +44,7 @@ class JmodPortsTest {
         }
         StringWriter log = new StringWriter();
         boolean ok = compile(input, output, log);
-        if (KNOWN_BROKEN.contains(relative)) {
+        if (JmodPortsFixtures.KNOWN_BROKEN.contains(relative)) {
             assertFalse(ok, relative + " is a known-broken original and should not compile:\n" + log);
             return;
         }
@@ -81,7 +64,7 @@ class JmodPortsTest {
                 "RUBiS/jmod",
                 "benchmarking/jmod-sql-compiler/jmod-live-database");
         for (String port : ports) {
-            Path input = portsRoot().resolve(port);
+            Path input = JmodPortsFixtures.root().resolve(port);
             Path dest = output.resolve(port.replace('/', '_'));
             Files.createDirectories(dest);
             StringWriter log = new StringWriter();
@@ -105,22 +88,6 @@ class JmodPortsTest {
             return stream.anyMatch(path -> path.toString().endsWith(".java"));
         } catch (Exception e) {
             return false;
-        }
-    }
-
-    private static Path portsRoot() {
-        URL resource = JmodPortsTest.class.getResource("/jmod-ports");
-        if (resource == null) {
-            Path fallback = Path.of("src/test/resources/jmod-ports");
-            if (Files.isDirectory(fallback)) {
-                return fallback.toAbsolutePath();
-            }
-            throw new IllegalStateException("jmod-ports fixtures are missing");
-        }
-        try {
-            return Path.of(resource.toURI());
-        } catch (URISyntaxException e) {
-            throw new IllegalStateException(e);
         }
     }
 }
