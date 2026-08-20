@@ -21,6 +21,7 @@ class JModCliTest {
         assertTrue(out.toString().contains("Regex"));
         assertTrue(out.toString().contains("SQLModule"));
         assertTrue(out.toString().contains("GetSet"));
+        assertTrue(out.toString().contains("Json"));
     }
 
     @Test

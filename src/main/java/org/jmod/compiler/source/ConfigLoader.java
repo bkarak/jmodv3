@@ -146,7 +146,7 @@ public final class ConfigLoader {
         while (fields.find()) {
             String key = fields.group(2);
             String value = parseJavaValue(fields.group(3));
-            if ("SQLMOD_NS_URI".equals(key)) {
+            if ("SQLMOD_NS_URI".equals(key) || "JSONMOD_SCHEMA_URI".equals(key)) {
                 File resolved = FileUriValidator.toFile(value, baseDir);
                 if (resolved != null) {
                     value = resolved.getAbsolutePath();

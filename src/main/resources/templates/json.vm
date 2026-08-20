@@ -1,0 +1,22 @@
+#if($PACKAGE && $PACKAGE != "")
+package $PACKAGE;
+#end
+import org.jmod.dsl.json.JsonObject;
+import $CLASS_CONFIGURATION;
+
+public class $CLASSNAME extends JsonObject<$CLASS_CONFIGURATION_SIMPLE> {
+#foreach( $VDECL in $JSON_VAR_DECL )
+    private $VDECL;
+#end
+
+    public $CLASSNAME($JSON_CONSTRUCTOR) {
+        super(new $CLASS_CONFIGURATION(), "$JSON_TEMPLATE", $JSON_SCHEMA);
+#foreach( $MAPPED_TYPES in $JSON_MAPPED_TYPES )
+        this.$MAPPED_TYPES.getVarName() = $MAPPED_TYPES.getVarName();
+#end
+    }
+
+    public String toJson() {
+        return render($JSON_RENDER_ARGS);
+    }
+}

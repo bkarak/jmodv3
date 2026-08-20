@@ -48,6 +48,21 @@ class EndToEndCompilerTest {
     }
 
     @Test
+    void compilesSimplejsonExample(@TempDir Path output) {
+        Compiler compiler = new Compiler();
+        Map<CompilerOption, String> options = new EnumMap<>(CompilerOption.class);
+        options.put(CompilerOption.OPT_INPUT_DIR, "examples/simplejson");
+        options.put(CompilerOption.OPT_OUTPUT_DIR, output.toString());
+        StringWriter log = new StringWriter();
+        assertTrue(compiler.compile(options, new String[0], log), log.toString());
+        String source = read(output.resolve("examples/simplejson/Person.java"));
+        assertTrue(source.contains("class Person extends JsonObject<JsonConf>"));
+        assertTrue(source.contains("__JMOD_name__"));
+        assertTrue(Files.exists(output.resolve("examples/simplejson/Person.class")));
+        assertTrue(Files.exists(output.resolve("examples/simplejson/Main.class")));
+    }
+
+    @Test
     void failsWhenDeclaredConfigurationSourceIsMissing(@TempDir Path input, @TempDir Path output)
             throws Exception {
         Files.writeString(input.resolve("Query.jmod"), """

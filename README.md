@@ -2,7 +2,7 @@
 
 J% is a small Java language extension for embedding DSLs as first-class `external` types. This repository is a **source-to-source prototype compiler**: `.jmod` files become Java classes, then `javac` produces bytecode.
 
-The host syntax, package layout (`org.jmod.*`), and module API follow the J% thesis. Regex, SQL, and GetSet are implemented as pluggable compiler modules.
+The host syntax, package layout (`org.jmod.*`), and module API follow the J% thesis. Regex, SQL, GetSet, and JSON are implemented as pluggable compiler modules.
 
 ## Requirements
 
@@ -61,7 +61,7 @@ IpAddress ip = new IpAddress();
 ip.matches("127.0.0.1");
 ```
 
-The configuration type argument may be omitted; the module default is used (`RegexConfiguration`, `SQLConfiguration`, `GetSetConfiguration`).
+The configuration type argument may be omitted; the module default is used (`RegexConfiguration`, `SQLConfiguration`, `GetSetConfiguration`, `JsonConfiguration`).
 
 ## Modules
 
@@ -113,6 +113,30 @@ public external Person extends GetSetType<GetSetConfiguration> {
 
 `GS_GEN_GETTER` / `GS_GEN_SETTER` (default true).
 
+### JSON
+
+The body is a JSON value with `#[name]<JavaType>` at value positions (not inside JSON strings):
+
+```java
+public external Person extends JsonObject<JsonConf> {
+{
+  "name": #[name]<String>,
+  "age": #[age]<int>,
+  "tags": #[tags]<String[]>
+}
+}
+```
+
+`new Person("Ada", 36, tags).toJson()` builds a JSON document with values encoded by Jackson. `toJsonNode()` returns a parsed tree.
+
+Subclass `JsonConfiguration` to validate against a JSON Schema at compile time (dummy literals) and again at `toJson()` (real values):
+
+| Field | Role |
+| --- | --- |
+| `JSONMOD_SCHEMA_AWARE` / `JSONMOD_SCHEMA_URI` | Load a JSON Schema document; reject instances that do not conform (including Java/JSON type mismatches) |
+
+Drafts 4, 6, 7, 2019-09, and 2020-12 are accepted (`$schema` selects the dialect). Relative `file://./person.schema.json` URIs resolve against the configuration source directory.
+
 ## Examples
 
 ```sh
@@ -122,6 +146,7 @@ java -cp out:target/jmod-0.1.0-SNAPSHOT.jar examples.simpleregex.Main
 
 - `examples/simpleregex` — IP address regex
 - `examples/simplesql` — parameterized `SELECT` plus `SimpleConf` with schema checking (`examples/simplesql/schema.sql`)
+- `examples/simplejson` — JSON object plus `JsonConf` with JSON Schema checking (`examples/simplejson/person.schema.json`)
 
 ## Tests
 

@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.jmod.compiler.source.CodeUnit;
 import org.jmod.dsl.getset.GetSetModule;
+import org.jmod.dsl.json.JsonModule;
 import org.jmod.dsl.regex.RegexModule;
 import org.jmod.dsl.sql.SQLModule;
 import org.jmod.symbol.SymbolTable;
@@ -22,6 +23,7 @@ public final class ModuleList {
         modules.add(new RegexModule());
         modules.add(new SQLModule());
         modules.add(new GetSetModule());
+        modules.add(new JsonModule());
     }
 
     public List<Module> getModules() {

@@ -1,0 +1,11 @@
+package examples.simplejson;
+
+import org.jmod.dsl.json.JsonObject;
+
+public external Person extends JsonObject<JsonConf> {
+{
+  "name": #[name]<String>,
+  "age": #[age]<int>,
+  "tags": #[tags]<String[]>
+}
+}

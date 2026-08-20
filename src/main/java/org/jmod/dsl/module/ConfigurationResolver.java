@@ -18,6 +18,7 @@ public final class ConfigurationResolver {
         BUILTINS.put("SQLConfiguration", new Type("org.jmod.dsl.sql", "SQLConfiguration"));
         BUILTINS.put("RegexConfiguration", new Type("org.jmod.dsl.regex", "RegexConfiguration"));
         BUILTINS.put("GetSetConfiguration", new Type("org.jmod.dsl.getset", "GetSetConfiguration"));
+        BUILTINS.put("JsonConfiguration", new Type("org.jmod.dsl.json", "JsonConfiguration"));
         BUILTINS.put("DefaultConfiguration", new Type("org.jmod.dsl.module.def", "DefaultConfiguration"));
         BUILTINS.put("ExternalConfiguration", new Type("org.jmod.dsl.module", "ExternalConfiguration"));
     }

@@ -73,4 +73,20 @@ class ValidatorTest {
         assertTrue(configuration.isValid(Map.of("REGEX_ENGINE", "jdk", "REGEX_OUTPUT", "java")));
         assertFalse(configuration.isValid(Map.of("REGEX_ENGINE", "pcre", "REGEX_OUTPUT", "java")));
     }
+
+    @Test
+    void jsonSchemaUriRequiredWhenAware(@TempDir Path temp) throws Exception {
+        Path schema = temp.resolve("s.json");
+        Files.writeString(schema, "{ \"type\": \"object\" }");
+        org.jmod.dsl.json.JsonConfiguration configuration = new org.jmod.dsl.json.JsonConfiguration();
+        assertTrue(configuration.isValid(Map.of(
+                "JSONMOD_SCHEMA_AWARE", "false",
+                "JSONMOD_SCHEMA_URI", "")));
+        assertFalse(configuration.isValid(Map.of(
+                "JSONMOD_SCHEMA_AWARE", "true",
+                "JSONMOD_SCHEMA_URI", "not-a-file")));
+        assertTrue(configuration.isValid(Map.of(
+                "JSONMOD_SCHEMA_AWARE", "true",
+                "JSONMOD_SCHEMA_URI", schema.toUri().toString())));
+    }
 }
