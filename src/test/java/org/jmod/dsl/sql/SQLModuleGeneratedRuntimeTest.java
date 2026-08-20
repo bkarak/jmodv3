@@ -1,10 +1,12 @@
 package org.jmod.dsl.sql;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.StringWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -85,6 +87,46 @@ class SQLModuleGeneratedRuntimeTest {
         query.getClass().getMethod("getStatement", Connection.class).invoke(query, jdbc.connection());
         assertTrue(jdbc.calls.get(0).startsWith("prepareStatement:"));
         assertEquals("setObject(1, " + date + ")", jdbc.calls.get(1));
+    }
+
+    @Test
+    void generatedClassExpandsInListFromJavaArray(@TempDir Path temp) throws Exception {
+        Path generated = compileExternal(temp, """
+                public external ByNames extends SQLQuery {
+                select * from t where name in #[names]<String[]>
+                }
+                """);
+        Object query = load(temp, generated, "ByNames")
+                .getConstructor(String[].class)
+                .newInstance((Object) new String[] {"alice", "bob"});
+
+        assertEquals("select * from t where name in (#EXPAND:names)",
+                query.getClass().getMethod("getSQLStatement").invoke(query));
+
+        RecordingJdbc jdbc = new RecordingJdbc();
+        query.getClass().getMethod("getStatement", Connection.class).invoke(query, jdbc.connection());
+        assertEquals(List.of(
+                "prepareStatement:select * from t where name in (?,?)",
+                "setString(1, alice)",
+                "setString(2, bob)"), jdbc.calls);
+    }
+
+    @Test
+    void generatedClassRejectsEmptyInList(@TempDir Path temp) throws Exception {
+        Path generated = compileExternal(temp, """
+                public external ByIds extends SQLQuery {
+                select * from t where id in #[ids]<int[]>
+                }
+                """);
+        Object query = load(temp, generated, "ByIds")
+                .getConstructor(int[].class)
+                .newInstance((Object) new int[0]);
+        RecordingJdbc jdbc = new RecordingJdbc();
+        InvocationTargetException error = assertThrows(InvocationTargetException.class,
+                () -> query.getClass().getMethod("getStatement", Connection.class)
+                        .invoke(query, jdbc.connection()));
+        assertTrue(error.getCause() instanceof java.sql.SQLException);
+        assertTrue(error.getCause().getMessage().contains("empty"));
     }
 
     @Test

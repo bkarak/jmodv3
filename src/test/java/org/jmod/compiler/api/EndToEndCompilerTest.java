@@ -41,10 +41,30 @@ class EndToEndCompilerTest {
         assertTrue(compiler.compile(options, new String[0], log), log.toString());
         String source = read(output.resolve("examples/simplesql/SelectExample.java"));
         assertTrue(source.contains("prepareStatement"));
-        assertTrue(source.contains("setInt(1, prim)"));
+        assertTrue(source.contains("setInt(_jmod_idx++, prim)"));
         assertTrue(source.contains("where sqle_primary = ?"));
         assertTrue(Files.exists(output.resolve("examples/simplesql/SelectExample.class")));
         assertTrue(Files.exists(output.resolve("examples/simplesql/SimpleConf.class")));
+    }
+
+    @Test
+    void failsWhenDeclaredConfigurationSourceIsMissing(@TempDir Path input, @TempDir Path output)
+            throws Exception {
+        Files.writeString(input.resolve("Query.jmod"), """
+                package demo;
+                import org.jmod.dsl.sql.SQLQuery;
+                public external Query extends SQLQuery<MissingConf> {
+                select 1
+                }
+                """);
+        Compiler compiler = new Compiler();
+        Map<CompilerOption, String> options = new EnumMap<>(CompilerOption.class);
+        options.put(CompilerOption.OPT_INPUT_DIR, input.toString());
+        options.put(CompilerOption.OPT_OUTPUT_DIR, output.toString());
+        StringWriter log = new StringWriter();
+        assertFalse(compiler.compile(options, new String[0], log), log.toString());
+        assertTrue(log.toString().contains("cannot load configuration type"), log.toString());
+        assertTrue(log.toString().contains("MissingConf"), log.toString());
     }
 
     @Test

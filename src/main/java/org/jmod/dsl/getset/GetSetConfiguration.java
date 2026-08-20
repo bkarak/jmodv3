@@ -20,15 +20,6 @@ public class GetSetConfiguration extends ExternalConfiguration {
     }
 
     @Override
-    public Map<String, String> getModuleConfiguration() {
-        Map<String, String> conf = new LinkedHashMap<>();
-        conf.put("GS_PACKAGE", GS_PACKAGE);
-        conf.put("GS_GEN_GETTER", Boolean.toString(GS_GEN_GETTER));
-        conf.put("GS_GEN_SETTER", Boolean.toString(GS_GEN_SETTER));
-        return conf;
-    }
-
-    @Override
     public Map<String, String> getRuntimeConfiguration() {
         return new LinkedHashMap<>();
     }

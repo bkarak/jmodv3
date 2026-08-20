@@ -4,10 +4,8 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import org.jmod.dsl.module.ModuleException;
 import org.jmod.dsl.module.configuration.FileUriValidator;
@@ -15,14 +13,15 @@ import org.jmod.dsl.module.configuration.FileUriValidator;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
+import net.sf.jsqlparser.statement.create.table.ColDataType;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 
 /**
- * Tables and columns loaded from a {@code CREATE TABLE} schema script.
+ * Tables, columns, and SQL types loaded from a {@code CREATE TABLE} schema script.
  */
 public final class DbSchema {
-    private final Map<String, Set<String>> tables = new LinkedHashMap<>();
+    private final Map<String, Map<String, String>> tables = new LinkedHashMap<>();
 
     public static DbSchema load(String uri) throws ModuleException {
         return load(uri, null);
@@ -55,10 +54,10 @@ public final class DbSchema {
 
     private void add(CreateTable createTable) {
         String table = normalize(createTable.getTable().getFullyQualifiedName());
-        Set<String> columns = tables.computeIfAbsent(table, key -> new LinkedHashSet<>());
+        Map<String, String> columns = tables.computeIfAbsent(table, key -> new LinkedHashMap<>());
         if (createTable.getColumnDefinitions() != null) {
             for (ColumnDefinition column : createTable.getColumnDefinitions()) {
-                columns.add(normalize(column.getColumnName()));
+                columns.put(normalize(column.getColumnName()), sqlTypeName(column.getColDataType()));
             }
         }
     }
@@ -78,23 +77,48 @@ public final class DbSchema {
     }
 
     public boolean hasColumn(String tableName, String columnName) {
-        String column = normalize(columnName);
-        Set<String> columns = columnsOf(tableName);
-        return columns != null && columns.contains(column);
+        return columnType(tableName, columnName) != null;
     }
 
-    private Set<String> columnsOf(String tableName) {
+    public String columnType(String tableName, String columnName) {
+        Map<String, String> columns = columnsOf(tableName);
+        if (columns == null) {
+            return null;
+        }
+        return columns.get(normalize(columnName));
+    }
+
+    private Map<String, String> columnsOf(String tableName) {
         String wanted = normalize(tableName);
         if (tables.containsKey(wanted)) {
             return tables.get(wanted);
         }
         String simple = simpleName(wanted);
-        for (Map.Entry<String, Set<String>> entry : tables.entrySet()) {
+        for (Map.Entry<String, Map<String, String>> entry : tables.entrySet()) {
             if (simpleName(entry.getKey()).equals(simple)) {
                 return entry.getValue();
             }
         }
         return null;
+    }
+
+    static String sqlTypeName(ColDataType dataType) {
+        if (dataType == null || dataType.getDataType() == null) {
+            return "";
+        }
+        return stripArguments(dataType.getDataType());
+    }
+
+    static String stripArguments(String sqlType) {
+        if (sqlType == null) {
+            return "";
+        }
+        String type = sqlType.trim();
+        int paren = type.indexOf('(');
+        if (paren >= 0) {
+            type = type.substring(0, paren).trim();
+        }
+        return type;
     }
 
     static String normalize(String name) {

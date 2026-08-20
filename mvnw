@@ -2,7 +2,7 @@
 # Local Maven bootstrap: downloads Apache Maven into .tools/ (gitignored).
 set -e
 ROOT="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-MVN_VERSION="3.9.9"
+MVN_VERSION="3.9.11"
 INSTALL_DIR="$ROOT/.tools/apache-maven-$MVN_VERSION"
 MVN_BIN="$INSTALL_DIR/bin/mvn"
 URL="https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/${MVN_VERSION}/apache-maven-${MVN_VERSION}-bin.tar.gz"
@@ -88,6 +88,24 @@ JAVA_HOME="$(resolve_java_home)" || {
 }
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
+
+# Maven 3.9 still uses Jansi (JNI), Guava/Guice (sun.misc.Unsafe), and Sisu
+# (reflective final-field writes). JDK 24+ warns; JDK 26 will start blocking
+# those calls. These flags are Maven's, not j-mod's. Probe first so JDK 17
+# still launches (unrecognized options would abort).
+append_maven_opt() {
+  flag="$1"
+  if "$JAVA_HOME/bin/java" "$flag" -version >/dev/null 2>&1; then
+    case " ${MAVEN_OPTS:-} " in
+      *" $flag "*) ;;
+      *) MAVEN_OPTS="$flag${MAVEN_OPTS:+ $MAVEN_OPTS}" ;;
+    esac
+  fi
+}
+append_maven_opt "--enable-native-access=ALL-UNNAMED"
+append_maven_opt "--sun-misc-unsafe-memory-access=allow"
+append_maven_opt "--enable-final-field-mutation=ALL-UNNAMED"
+export MAVEN_OPTS
 
 # Bare `./mvnw` (or only CLI flags like -q) has no Maven goal; default to package.
 has_goal=false

@@ -145,7 +145,14 @@ public class Compiler {
                 ok = false;
                 continue;
             }
-            Map<String, String> cfg = ConfigLoader.load(unit, module, sources);
+            Map<String, String> cfg;
+            try {
+                cfg = ConfigLoader.load(unit, module, sources);
+            } catch (ModuleException e) {
+                out.println(unit.describeLocation() + ": " + e.getMessage());
+                ok = false;
+                continue;
+            }
             if (context.isPrintingExternalContext()) {
                 out.println(unit.getExternalTypeName() + " context: " + Module.exportContext(cfg));
             }

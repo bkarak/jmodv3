@@ -45,4 +45,16 @@ class ExternalRefTest {
         assertEquals("java.lang.String", refs.get(0).getType());
         assertEquals("WHERE ID = ?", ExternalRefs.replaceWithPlaceholders("WHERE ID = #[id]"));
     }
+
+    @Test
+    void replacesInArrayWithGroupedPlaceholderAndExpandMarker() {
+        assertEquals("where id in (?)",
+                ExternalRefs.replaceWithPlaceholders("where id in #[ids]<int[]>"));
+        assertEquals("where id in (#EXPAND:ids)",
+                ExternalRefs.replaceWithCodegenSql("where id in #[ids]<int[]>"));
+        assertEquals("where blob = ?",
+                ExternalRefs.replaceWithPlaceholders("where blob = #[blob]<byte[]>"));
+        assertEquals("where blob = ?",
+                ExternalRefs.replaceWithCodegenSql("where blob = #[blob]<byte[]>"));
+    }
 }

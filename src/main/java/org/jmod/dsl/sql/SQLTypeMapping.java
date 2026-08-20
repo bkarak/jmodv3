@@ -67,12 +67,18 @@ public final class SQLTypeMapping extends DefaultMapping {
     }
 
     public boolean acceptsJavaType(String javaType) {
+        if (ExternalRefs.isInArrayType(javaType)) {
+            return acceptsJavaType(ExternalRefs.elementType(javaType));
+        }
         String canonical = ExternalRefs.canonicalType(javaType);
         return isKnownJavaType(canonical) || isKnownJavaType(javaType.trim().replace(" ", ""));
     }
 
     @Override
     public boolean isCompatible(String javaType, String dslType) {
+        if (ExternalRefs.isInArrayType(javaType)) {
+            return isCompatible(ExternalRefs.elementType(javaType), dslType);
+        }
         String java = ExternalRefs.canonicalType(javaType);
         String sql = normalizeSql(dslType);
         return super.isCompatible(java, sql)
@@ -154,6 +160,9 @@ public final class SQLTypeMapping extends DefaultMapping {
     }
 
     public String defaultLiteral(String javaType) {
+        if (ExternalRefs.isInArrayType(javaType)) {
+            return "(" + defaultLiteral(ExternalRefs.elementType(javaType)) + ")";
+        }
         switch (ExternalRefs.canonicalType(javaType)) {
             case "boolean":
             case "java.lang.Boolean":
@@ -218,6 +227,14 @@ public final class SQLTypeMapping extends DefaultMapping {
     }
 
     private static String normalizeSql(String dslType) {
-        return dslType == null ? "" : dslType.trim().toLowerCase();
+        if (dslType == null) {
+            return "";
+        }
+        String type = dslType.trim();
+        int paren = type.indexOf('(');
+        if (paren >= 0) {
+            type = type.substring(0, paren).trim();
+        }
+        return type.toLowerCase();
     }
 }

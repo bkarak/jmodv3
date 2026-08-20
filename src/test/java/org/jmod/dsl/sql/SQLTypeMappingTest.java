@@ -39,6 +39,10 @@ class SQLTypeMappingTest {
             "BigDecimal", "java.math.BigDecimal",
             "BigInteger", "java.math.BigInteger",
             "byte[]",
+            "int[]",
+            "Integer[]",
+            "String[]",
+            "long[]",
             "Date", "java.util.Date", "java.sql.Date",
             "Time", "java.sql.Time",
             "Timestamp", "java.sql.Timestamp", "java.util.Timestamp",
@@ -72,8 +76,7 @@ class SQLTypeMappingTest {
             "java.net.URI",
             "java.util.List",
             "java.util.Optional",
-            "int[]",
-            "String[]",
+            "java.net.URI[]",
             "void",
             "Void",
             "java.lang.StringBuilder",
@@ -91,6 +94,8 @@ class SQLTypeMappingTest {
         assertTrue(mapping.acceptsJavaType("  int  "));
         assertTrue(mapping.acceptsJavaType(" java.lang.String "));
         assertTrue(mapping.acceptsJavaType("byte []"));
+        assertTrue(mapping.acceptsJavaType("String []"));
+        assertTrue(mapping.acceptsJavaType("int []"));
     }
 
     @ParameterizedTest(name = "{0} → {1}")
@@ -303,7 +308,10 @@ class SQLTypeMappingTest {
                 Arguments.of("java.time.ZonedDateTime", "TIMESTAMP_WITH_TIMEZONE"),
                 Arguments.of("java.net.URL", "DATALINK"),
                 Arguments.of("java.util.UUID", "VARCHAR"),
-                Arguments.of("java.io.Reader", "NCLOB"));
+                Arguments.of("java.io.Reader", "NCLOB"),
+                Arguments.of("int[]", "INTEGER"),
+                Arguments.of("String[]", "VARCHAR"),
+                Arguments.of("java.lang.String[]", "TEXT"));
     }
 
     @ParameterizedTest
@@ -314,7 +322,9 @@ class SQLTypeMappingTest {
             "java.sql.Date, TIME",
             "boolean, BIGINT",
             "java.net.URL, VARCHAR",
-            "java.sql.Blob, CLOB"
+            "java.sql.Blob, CLOB",
+            "int[], VARCHAR",
+            "String[], INTEGER"
     })
     void rejectsIncompatiblePairs(String javaType, String sqlType) {
         assertFalse(mapping.isCompatible(javaType, sqlType), javaType + " vs " + sqlType);

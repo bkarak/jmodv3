@@ -33,8 +33,9 @@ public class GetSetModule extends Module {
     @Override
     public boolean evaluate(CodeUnit cu, Map<String, String> context) throws ModuleException {
         Map<String, String> cfg = context == null ? Map.of() : context;
-        String configurationFqcn = resolveConfiguration(cu);
-        String configurationSimple = configurationFqcn.substring(configurationFqcn.lastIndexOf('.') + 1);
+        Type configurationType = resolveConfigurationType(cu);
+        String configurationFqcn = configurationType.getQualifiedName();
+        String configurationSimple = configurationType.getName();
         BaseVelocityWriter writer = new BaseVelocityWriter("templates/getset.vm", getName());
         writer.add("PACKAGE", cu.getPackageName());
         writer.add("CLASSNAME", cu.getExternalTypeName());
@@ -95,24 +96,5 @@ public class GetSetModule extends Module {
     @Override
     public Type[] getExternalTypes() {
         return new Type[] {new Type("org.jmod.dsl.getset", "GetSetType")};
-    }
-
-    private static String resolveConfiguration(CodeUnit cu) {
-        String name = cu.getConfigurationTypeName();
-        if (name == null || name.isBlank()) {
-            return "org.jmod.dsl.getset.GetSetConfiguration";
-        }
-        if (name.indexOf('.') >= 0) {
-            return name;
-        }
-        for (String imported : cu.getImports()) {
-            if (imported.endsWith("." + name)) {
-                return imported;
-            }
-        }
-        if (!cu.getPackageName().isEmpty()) {
-            return cu.getPackageName() + "." + name;
-        }
-        return "org.jmod.dsl.getset.GetSetConfiguration";
     }
 }

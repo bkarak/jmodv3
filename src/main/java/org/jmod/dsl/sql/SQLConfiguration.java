@@ -1,6 +1,5 @@
 package org.jmod.dsl.sql;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.jmod.dsl.module.ExternalConfiguration;
@@ -30,19 +29,6 @@ public class SQLConfiguration extends ExternalConfiguration {
         validators.put("SQLMOD_JDBC_DRIVER", new RequiredWhen("SQLMOD_LIVE_TEST", new JdbcDriverValidator()));
         validators.put("SQLMOD_DB_URL", new RequiredWhen("SQLMOD_LIVE_TEST", new JdbcUrlValidator()));
         validators.put("SQLMOD_DB_LOGIN", new RequiredWhen("SQLMOD_LIVE_TEST", new StringValidator()));
-    }
-
-    @Override
-    public Map<String, String> getModuleConfiguration() {
-        Map<String, String> result = new LinkedHashMap<>();
-        result.put("SQLMOD_NS_AWARE", Boolean.toString(SQLMOD_NS_AWARE));
-        result.put("SQLMOD_NS_URI", SQLMOD_NS_URI);
-        result.put("SQLMOD_LIVE_TEST", Boolean.toString(SQLMOD_LIVE_TEST));
-        result.put("SQLMOD_JDBC_DRIVER", SQLMOD_JDBC_DRIVER);
-        result.put("SQLMOD_DB_URL", SQLMOD_DB_URL);
-        result.put("SQLMOD_DB_LOGIN", SQLMOD_DB_LOGIN);
-        result.put("SQLMOD_DB_PASSWORD", SQLMOD_DB_PASSWORD);
-        return result;
     }
 
     @Override

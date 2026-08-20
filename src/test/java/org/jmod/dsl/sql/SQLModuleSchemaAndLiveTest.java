@@ -63,6 +63,92 @@ class SQLModuleSchemaAndLiveTest {
     }
 
     @Test
+    void schemaAwareQueryRejectsJavaTypeIncompatibleWithColumn(@TempDir Path temp) throws Exception {
+        Path schema = temp.resolve("schema.sql");
+        Files.writeString(schema, "create table customer (cust_id int, customer_name varchar(42));");
+        CodeUnit unit = unit(temp, """
+                public external Bad extends SQLQuery {
+                select * from customer where cust_id = #[id]<String>
+                }
+                """);
+        ModuleException error = assertThrows(ModuleException.class, () -> new SQLModule().evaluate(unit, Map.of(
+                "SQLMOD_NS_AWARE", "true",
+                "SQLMOD_NS_URI", schema.toUri().toString())));
+        assertTrue(error.getMessage().contains("type incompatibility"));
+        assertTrue(error.getMessage().contains("cust_id"));
+        assertTrue(error.getMessage().contains("String"));
+    }
+
+    @Test
+    void schemaAwareQueryAcceptsMatchingColumnType(@TempDir Path temp) throws Exception {
+        Path schema = temp.resolve("schema.sql");
+        Files.writeString(schema, "create table customer (cust_id int, customer_name varchar(42));");
+        CodeUnit unit = unit(temp, """
+                public external CustomerByName extends SQLQuery {
+                select * from customer where customer_name = #[name]<String> and cust_id = #[id]<int>
+                }
+                """);
+        assertTrue(new SQLModule().evaluate(unit, Map.of(
+                "SQLMOD_NS_AWARE", "true",
+                "SQLMOD_NS_URI", schema.toUri().toString())));
+    }
+
+    @Test
+    void schemaAwareQueryRejectsIncompatibleInListElementType(@TempDir Path temp) throws Exception {
+        Path schema = temp.resolve("schema.sql");
+        Files.writeString(schema, "create table customer (cust_id int, customer_name varchar(42));");
+        CodeUnit unit = unit(temp, """
+                public external Bad extends SQLQuery {
+                select * from customer where customer_name in #[ids]<int[]>
+                }
+                """);
+        ModuleException error = assertThrows(ModuleException.class, () -> new SQLModule().evaluate(unit, Map.of(
+                "SQLMOD_NS_AWARE", "true",
+                "SQLMOD_NS_URI", schema.toUri().toString())));
+        assertTrue(error.getMessage().contains("type incompatibility"));
+        assertTrue(error.getMessage().contains("int[]"));
+    }
+
+    @Test
+    void schemaAwareQueryAcceptsInListMatchingColumnType(@TempDir Path temp) throws Exception {
+        Path schema = temp.resolve("schema.sql");
+        Files.writeString(schema, "create table customer (cust_id int, customer_name varchar(42));");
+        CodeUnit unit = unit(temp, """
+                public external CustomerIn extends SQLQuery {
+                select * from customer where cust_id in #[ids]<int[]>
+                }
+                """);
+        assertTrue(new SQLModule().evaluate(unit, Map.of(
+                "SQLMOD_NS_AWARE", "true",
+                "SQLMOD_NS_URI", schema.toUri().toString())));
+    }
+
+    @Test
+    void schemaAwareUpdateAndInsertCheckAssignedColumnTypes(@TempDir Path temp) throws Exception {
+        Path schema = temp.resolve("schema.sql");
+        Files.writeString(schema, "create table customer (cust_id int, customer_name varchar(42));");
+        CodeUnit update = unit(temp, """
+                public external Rename extends SQLQuery {
+                update customer set customer_name = #[name]<int> where cust_id = #[id]<int>
+                }
+                """);
+        ModuleException updateError = assertThrows(ModuleException.class,
+                () -> new SQLModule().evaluate(update, Map.of(
+                        "SQLMOD_NS_AWARE", "true",
+                        "SQLMOD_NS_URI", schema.toUri().toString())));
+        assertTrue(updateError.getMessage().contains("type incompatibility"));
+
+        CodeUnit insert = unit(temp, """
+                public external AddCustomer extends SQLQuery {
+                insert into customer (cust_id, customer_name) values (#[id]<int>, #[name]<String>)
+                }
+                """);
+        assertTrue(new SQLModule().evaluate(insert, Map.of(
+                "SQLMOD_NS_AWARE", "true",
+                "SQLMOD_NS_URI", schema.toUri().toString())));
+    }
+
+    @Test
     void liveJdbcExecutesSelect(@TempDir Path temp) throws Exception {
         String url = "jdbc:h2:mem:jmodlive;DB_CLOSE_DELAY=-1";
         Class.forName("org.h2.Driver");
@@ -99,6 +185,28 @@ class SQLModuleSchemaAndLiveTest {
                 "SQLMOD_DB_LOGIN", "sa",
                 "SQLMOD_DB_PASSWORD", "")));
         assertTrue(error.getMessage().toLowerCase().contains("live"));
+    }
+
+    @Test
+    void liveJdbcExecutesInList(@TempDir Path temp) throws Exception {
+        String url = "jdbc:h2:mem:jmodinlist;DB_CLOSE_DELAY=-1";
+        Class.forName("org.h2.Driver");
+        try (Connection connection = DriverManager.getConnection(url, "sa", "");
+                Statement statement = connection.createStatement()) {
+            statement.execute("create table items (id int, name varchar(32))");
+            statement.execute("insert into items values (1, 'x')");
+        }
+        CodeUnit unit = unit(temp, """
+                public external ItemIn extends SQLQuery {
+                select * from items where id in #[ids]<int[]>
+                }
+                """);
+        assertTrue(new SQLModule().evaluate(unit, Map.of(
+                "SQLMOD_LIVE_TEST", "true",
+                "SQLMOD_DB_URL", url,
+                "SQLMOD_JDBC_DRIVER", "org.h2.Driver",
+                "SQLMOD_DB_LOGIN", "sa",
+                "SQLMOD_DB_PASSWORD", "")));
     }
 
     @Test

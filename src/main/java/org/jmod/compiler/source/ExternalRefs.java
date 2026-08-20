@@ -54,7 +54,31 @@ public final class ExternalRefs {
     }
 
     public static String replaceWithPlaceholders(String body) {
-        return PATTERN.matcher(body).replaceAll("?");
+        return replaceEach(body, type -> isInArrayType(type) ? "(?)" : "?");
+    }
+
+    /**
+     * Array placeholders become named {@code (#EXPAND:name)} markers so
+     * {@link org.jmod.dsl.sql.SqlIn} can emit {@code (?,?,?)} at runtime.
+     */
+    public static String replaceWithCodegenSql(String body) {
+        Matcher matcher = PATTERN.matcher(body);
+        StringBuilder result = new StringBuilder();
+        int last = 0;
+        while (matcher.find()) {
+            result.append(body, last, matcher.start());
+            String type = matcher.group(2) == null || matcher.group(2).isBlank()
+                    ? DEFAULT_TYPE
+                    : matcher.group(2).trim();
+            if (isInArrayType(type)) {
+                result.append("(#EXPAND:").append(matcher.group(1)).append(")");
+            } else {
+                result.append("?");
+            }
+            last = matcher.end();
+        }
+        result.append(body.substring(last));
+        return result.toString();
     }
 
     public static String replaceWithLiterals(String body, java.util.function.Function<String, String> literalForType) {
@@ -73,8 +97,46 @@ public final class ExternalRefs {
         return result.toString();
     }
 
+    private static String replaceEach(String body, java.util.function.Function<String, String> replacement) {
+        Matcher matcher = PATTERN.matcher(body);
+        StringBuilder result = new StringBuilder();
+        int last = 0;
+        while (matcher.find()) {
+            result.append(body, last, matcher.start());
+            String type = matcher.group(2) == null || matcher.group(2).isBlank()
+                    ? DEFAULT_TYPE
+                    : matcher.group(2).trim();
+            result.append(replacement.apply(type));
+            last = matcher.end();
+        }
+        result.append(body.substring(last));
+        return result.toString();
+    }
+
+    /**
+     * {@code T[]} used as an SQL {@code IN} list. {@code byte[]} stays a JDBC BLOB.
+     */
+    public static boolean isInArrayType(String type) {
+        String trimmed = type == null ? "" : type.trim().replace(" ", "");
+        if (!trimmed.endsWith("[]") || trimmed.equals("byte[]")) {
+            return false;
+        }
+        return trimmed.length() > 2;
+    }
+
+    public static String elementType(String type) {
+        String trimmed = type.trim().replace(" ", "");
+        if (!trimmed.endsWith("[]")) {
+            return trimmed;
+        }
+        return trimmed.substring(0, trimmed.length() - 2);
+    }
+
     public static String canonicalType(String type) {
         String trimmed = type.trim().replace(" ", "");
+        if (isInArrayType(trimmed)) {
+            return canonicalType(elementType(trimmed)) + "[]";
+        }
         if (trimmed.indexOf('.') >= 0) {
             if ("java.util.Timestamp".equals(trimmed)) {
                 return "java.sql.Timestamp";
@@ -171,6 +233,9 @@ public final class ExternalRefs {
 
     public static String toJavaSourceType(String type) {
         String canonical = canonicalType(type);
+        if (isInArrayType(canonical)) {
+            return toJavaSourceType(elementType(canonical)) + "[]";
+        }
         if (canonical.startsWith("java.lang.") && canonical.indexOf('.', "java.lang.".length()) < 0) {
             return canonical.substring("java.lang.".length());
         }

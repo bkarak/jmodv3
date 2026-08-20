@@ -51,12 +51,16 @@ class SQLModulePortsTest {
         assertFalse(generated.contains("#["), relative);
 
         SQLTypeMapping mapping = new SQLTypeMapping();
-        int index = 1;
         for (ExternalRef occurrence : unit.getExternalReferences()) {
-            String setter = mapping.setterFor(occurrence.getType()) + "(" + index + ", "
-                    + occurrence.getName() + ")";
-            assertTrue(generated.contains(setter), relative + " missing " + setter + "\n" + generated);
-            index++;
+            if (ExternalRefs.isInArrayType(occurrence.getType())) {
+                String setter = mapping.setterFor(ExternalRefs.elementType(occurrence.getType()))
+                        + "(_jmod_idx++, " + occurrence.getName() + "[";
+                assertTrue(generated.contains(setter), relative + " missing " + setter + "\n" + generated);
+            } else {
+                String setter = mapping.setterFor(occurrence.getType()) + "(_jmod_idx++, "
+                        + occurrence.getName() + ")";
+                assertTrue(generated.contains(setter), relative + " missing " + setter + "\n" + generated);
+            }
         }
         for (ExternalRef param : unit.getUniqueParameters()) {
             String javaType = ExternalRefs.toJavaSourceType(param.getType());

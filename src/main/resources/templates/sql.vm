@@ -2,6 +2,7 @@
 package $PACKAGE;
 #end
 import org.jmod.dsl.sql.SQLQuery;
+import org.jmod.dsl.sql.SqlIn;
 import $CLASS_CONFIGURATION;
 import java.sql.*;
 
@@ -19,9 +20,11 @@ public class $CLASSNAME extends SQLQuery<$CLASS_CONFIGURATION_SIMPLE> {
     }
 
     public PreparedStatement getStatement(Connection c) throws SQLException {
-        PreparedStatement pstmnt = c.prepareStatement(this.sqlStatement);
+        String sql = SqlIn.expand(this.sqlStatement$SQL_IN_EXPAND_ARGS);
+        PreparedStatement pstmnt = c.prepareStatement(sql);
+        int _jmod_idx = 1;
 #foreach( $STMNT in $SQL_CODE_PS_STATEMENTS )
-        pstmnt.$STMNT;
+        $STMNT
 #end
         return pstmnt;
     }

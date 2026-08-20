@@ -12,7 +12,7 @@ import org.jmod.compiler.source.CodeUnit;
 import org.jmod.compiler.source.SourceFile;
 
 /**
- * Writes a compact XML metrics report for a compilation unit set.
+ * Writes a compact JSON metrics report for a compilation unit set.
  */
 public final class MetricsReport {
     private static final Pattern TYPE_DECL = Pattern.compile("\\b(class|interface|enum)\\s+\\w+");
@@ -35,6 +35,7 @@ public final class MetricsReport {
         int enums = 0;
         int interfaces = 0;
         StringBuilder units = new StringBuilder();
+        boolean firstUnit = true;
         for (SourceFile source : sources) {
             LineStatistics stats = new LineStatistics(source.getFile());
             loc += stats.getLoc();
@@ -45,12 +46,17 @@ public final class MetricsReport {
                 id += "/";
             }
             id += source.getTypeName().isEmpty() ? source.getFile().getName() : source.getTypeName();
-            units.append("    <unit id=\"").append(escape(id)).append("\" file=\"")
-                    .append(escape(source.getFile().getPath())).append("\">\n");
-            units.append("      <LinesOfCode>").append(stats.getLoc()).append("</LinesOfCode>\n");
-            units.append("      <LinesOfComments>").append(stats.getLocom()).append("</LinesOfComments>\n");
-            units.append("      <LineCount>").append(stats.getTotal()).append("</LineCount>\n");
-            units.append("    </unit>\n");
+            if (!firstUnit) {
+                units.append(",\n");
+            }
+            firstUnit = false;
+            units.append("    {\n");
+            units.append("      \"id\": ").append(jsonString(id)).append(",\n");
+            units.append("      \"file\": ").append(jsonString(source.getFile().getPath())).append(",\n");
+            units.append("      \"linesOfCode\": ").append(stats.getLoc()).append(",\n");
+            units.append("      \"linesOfComments\": ").append(stats.getLocom()).append(",\n");
+            units.append("      \"lineCount\": ").append(stats.getTotal()).append('\n');
+            units.append("    }");
             if (!source.isExternal() && source.getFile().getName().endsWith(".java")) {
                 String text = Files.readString(source.getPath(), StandardCharsets.UTF_8);
                 Matcher matcher = TYPE_DECL.matcher(text);
@@ -65,25 +71,29 @@ public final class MetricsReport {
                 }
             }
         }
-        StringBuilder xml = new StringBuilder();
-        xml.append("<metrics>\n  <project>\n");
-        xml.append("    <FileCount>").append(files).append("</FileCount>\n");
-        xml.append("    <LinesOfCode>").append(loc).append("</LinesOfCode>\n");
-        xml.append("    <LinesOfComments>").append(locom).append("</LinesOfComments>\n");
-        xml.append("    <LineCount>").append(total).append("</LineCount>\n");
-        xml.append("    <NumberOfClasses>").append(classes).append("</NumberOfClasses>\n");
-        xml.append("    <NumberOfEnumerations>").append(enums).append("</NumberOfEnumerations>\n");
-        xml.append("    <NumberOfInterfaces>").append(interfaces).append("</NumberOfInterfaces>\n");
-        xml.append("    <NumberOfDSLTypes>").append(dslTypes).append("</NumberOfDSLTypes>\n");
-        xml.append("    <LinesOfDSLCode>").append(dslLines).append("</LinesOfDSLCode>\n");
-        xml.append("  </project>\n");
-        xml.append(units);
-        xml.append("</metrics>\n");
+        StringBuilder json = new StringBuilder();
+        json.append("{\n");
+        json.append("  \"files\": ").append(files).append(",\n");
+        json.append("  \"linesOfCode\": ").append(loc).append(",\n");
+        json.append("  \"linesOfComments\": ").append(locom).append(",\n");
+        json.append("  \"lineCount\": ").append(total).append(",\n");
+        json.append("  \"classes\": ").append(classes).append(",\n");
+        json.append("  \"enumerations\": ").append(enums).append(",\n");
+        json.append("  \"interfaces\": ").append(interfaces).append(",\n");
+        json.append("  \"dslTypes\": ").append(dslTypes).append(",\n");
+        json.append("  \"dslLines\": ").append(dslLines).append(",\n");
+        json.append("  \"units\": [\n");
+        json.append(units);
+        if (units.length() > 0) {
+            json.append('\n');
+        }
+        json.append("  ]\n");
+        json.append("}\n");
         File parent = destination.getParentFile();
         if (parent != null) {
             Files.createDirectories(parent.toPath());
         }
-        Files.writeString(destination.toPath(), xml.toString(), StandardCharsets.UTF_8);
+        Files.writeString(destination.toPath(), json.toString(), StandardCharsets.UTF_8);
     }
 
     private static int lineCount(String body) {
@@ -99,8 +109,26 @@ public final class MetricsReport {
         return lines;
     }
 
-    private static String escape(String value) {
-        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                .replace("\"", "&quot;");
+    static String jsonString(String value) {
+        StringBuilder escaped = new StringBuilder("\"");
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            switch (ch) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> {
+                    if (ch < 0x20) {
+                        escaped.append(String.format("\\u%04x", (int) ch));
+                    } else {
+                        escaped.append(ch);
+                    }
+                }
+            }
+        }
+        escaped.append('"');
+        return escaped.toString();
     }
 }

@@ -33,6 +33,10 @@ public abstract class Module {
 
     public abstract Type getConfigurationType();
 
+    public Type resolveConfigurationType(CodeUnit unit) {
+        return ConfigurationResolver.resolve(unit, getConfigurationType());
+    }
+
     public abstract Map<String, String> getDefaultConfiguration();
 
     public ExternalConfiguration newConfiguration() {

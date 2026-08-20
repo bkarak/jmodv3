@@ -5,17 +5,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jmod.dsl.module.configuration.ConfigFields;
 import org.jmod.dsl.module.configuration.Validator;
 
 /**
  * Base class for compile-time / runtime module configuration types.
+ * Subclass public fields are the policy; {@link #getRuntimeConfiguration()}
+ * is what generated external instances expose after specialization.
  */
 public abstract class ExternalConfiguration {
     protected final Map<String, Validator> validators = new LinkedHashMap<>();
 
-    public abstract Map<String, String> getModuleConfiguration();
+    public Map<String, String> getModuleConfiguration() {
+        return ConfigFields.read(this);
+    }
 
-    public abstract Map<String, String> getRuntimeConfiguration();
+    public Map<String, String> getRuntimeConfiguration() {
+        return getModuleConfiguration();
+    }
 
     public boolean isValid(Map<String, String> conf) {
         return validationErrors(conf).isEmpty();

@@ -15,6 +15,9 @@ public final class Type {
     }
 
     public static Type parse(String qualified) {
+        if (qualified == null || qualified.isBlank()) {
+            return new Type("", "");
+        }
         int lastDot = qualified.lastIndexOf('.');
         if (lastDot < 0) {
             return new Type("", qualified);

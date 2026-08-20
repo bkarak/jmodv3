@@ -1,11 +1,11 @@
 package org.jmod;
 
 import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jmod.cmd.Arguments;
 import org.jmod.cmd.CompilerOption;
+import org.jmod.cmd.UsageException;
 import org.jmod.compiler.api.Compiler;
 import org.jmod.compiler.api.ExternalModule;
 
@@ -24,59 +24,38 @@ public final class JMod {
     }
 
     static int run(String[] args, PrintWriter out, PrintWriter err) {
+        Arguments parsed;
+        try {
+            parsed = Arguments.parse(args);
+        } catch (UsageException e) {
+            err.println("jmod: " + e.getMessage());
+            err.println("Try 'jmod --help' for more information.");
+            return 2;
+        }
+
+        Map<CompilerOption, String> options = parsed.options();
+        if (options.containsKey(CompilerOption.OPT_HELP)) {
+            printHelp(out);
+            return 0;
+        }
+
         Compiler compiler = new Compiler();
-        Map<CompilerOption, String> options = new LinkedHashMap<>();
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
-            CompilerOption option = CompilerOption.fromArg(arg);
-            if (option == null) {
-                err.println("unknown option: " + arg);
-                printHelp(err);
-                return 2;
-            }
-            switch (option) {
-                case OPT_HELP:
-                    printHelp(out);
-                    return 0;
-                case OPT_MODULE_LIST:
-                    printModules(compiler, out);
-                    return 0;
-                default:
-                    if (option.hasArgument()) {
-                        if (i + 1 >= args.length) {
-                            err.println("missing value for " + arg);
-                            return 2;
-                        }
-                        options.put(option, args[++i]);
-                    } else {
-                        options.put(option, "true");
-                    }
-                    break;
-            }
+        if (options.containsKey(CompilerOption.OPT_MODULE_LIST)) {
+            printModules(compiler, out);
+            return 0;
         }
         if (options.containsKey(CompilerOption.OPT_COMPILER_CONTEXT)
-                && !options.containsKey(CompilerOption.OPT_INPUT_DIR)) {
+                && !options.containsKey(CompilerOption.OPT_INPUT_DIR)
+                && parsed.operands().isEmpty()) {
             out.print(compiler.getCompilerContext().dump());
             return 0;
         }
-        if (!options.containsKey(CompilerOption.OPT_INPUT_DIR)) {
-            err.println("missing required option -i / --input-dir");
-            printHelp(err);
+        if (!options.containsKey(CompilerOption.OPT_INPUT_DIR) && parsed.operands().isEmpty()) {
+            err.println("jmod: missing input directory");
+            err.println("Try 'jmod --help' for more information.");
             return 2;
         }
-        boolean xml = options.containsKey(CompilerOption.OPT_XML_OUTPUT);
-        StringWriter buffer = xml ? new StringWriter() : null;
-        PrintWriter log = xml ? new PrintWriter(buffer, true) : out;
-        boolean ok = compiler.compile(options, new String[0], log);
-        if (xml) {
-            log.flush();
-            out.println("<jmod>");
-            out.println("  <log><![CDATA[");
-            out.print(buffer.toString().replace("]]>", "]]]]><![CDATA[>"));
-            out.println("]]></log>");
-            out.println("</jmod>");
-        }
-        return ok ? 0 : 1;
+        return compiler.compile(options, parsed.operandArray(), out) ? 0 : 1;
     }
 
     private static void printModules(Compiler compiler, PrintWriter out) {
@@ -88,10 +67,14 @@ public final class JMod {
 
     private static void printHelp(PrintWriter out) {
         out.println("J% compiler (j-mod)");
-        out.println("Usage: java -jar jmod.jar -i <input-dir> [-o <output-dir>] [options]");
+        out.println("Usage: jmod [OPTION]... [-i DIR]... [FILE]...");
+        out.println();
+        out.println("Compile J% (.jmod) sources to Java. FILE operands are extra input");
+        out.println("files or directories. Options may appear in any order.");
+        out.println();
+        out.println("Options:");
         for (CompilerOption option : CompilerOption.values()) {
-            out.printf("  %s, %s%n      %s%n",
-                    option.getShortName(), option.getLongName(), option.getDescription());
+            out.printf("  %-36s %s%n", option.helpToken(), option.getDescription());
         }
     }
 }

@@ -64,7 +64,7 @@ class SQLModuleTest {
         String generated = Files.readString(temp.resolve("examples/simplesql/SelectExample.java"));
         assertTrue(generated.contains("class SelectExample extends SQLQuery<SQLConfiguration>"));
         assertTrue(generated.contains("prepareStatement"));
-        assertTrue(generated.contains("setInt(1, prim)"));
+        assertTrue(generated.contains("setInt(_jmod_idx++, prim)"));
         assertTrue(generated.contains("public SelectExample(int prim)"));
         assertTrue(generated.contains("where sqle_primary = ?"));
     }
@@ -81,10 +81,10 @@ class SQLModuleTest {
                 """);
         assertTrue(new SQLModule().evaluate(unit, Map.of()));
         String generated = Files.readString(temp.resolve("Mixed.java"));
-        assertTrue(generated.contains("setDate(1, d)"));
-        assertTrue(generated.contains("setTime(2, tm)"));
-        assertTrue(generated.contains("setURL(3, u)"));
-        assertTrue(generated.contains("setBigDecimal(4, n)"));
+        assertTrue(generated.contains("setDate(_jmod_idx++, d)"));
+        assertTrue(generated.contains("setTime(_jmod_idx++, tm)"));
+        assertTrue(generated.contains("setURL(_jmod_idx++, u)"));
+        assertTrue(generated.contains("setBigDecimal(_jmod_idx++, n)"));
         assertTrue(generated.contains("java.sql.Date d"));
         assertTrue(generated.contains("java.net.URL u"));
     }
@@ -166,7 +166,7 @@ class SQLModuleTest {
                     """);
             assertTrue(generated.contains("public ByName(String nickname)"));
             assertTrue(generated.contains("private String nickname"));
-            assertTrue(generated.contains("setString(1, nickname)"));
+            assertTrue(generated.contains("setString(_jmod_idx++, nickname)"));
             assertTrue(generated.contains("where nickname = ?"));
         }
 
@@ -178,8 +178,8 @@ class SQLModuleTest {
                     }
                     """);
             assertTrue(generated.contains("public Range(int bound)"));
-            assertTrue(generated.contains("setInt(1, bound)"));
-            assertTrue(generated.contains("setInt(2, bound)"));
+            assertTrue(generated.contains("setInt(_jmod_idx++, bound)"));
+            assertEquals(2, generated.split("setInt\\(_jmod_idx\\+\\+, bound\\)", -1).length - 1);
             assertEquals(1, generated.split("private int bound", -1).length - 1);
         }
 
@@ -191,9 +191,10 @@ class SQLModuleTest {
                     }
                     """);
             assertTrue(generated.contains("public MixedOrder(int a, String b, long c)"));
-            assertTrue(generated.contains("setInt(1, a)"));
-            assertTrue(generated.contains("setString(2, b)"));
-            assertTrue(generated.contains("setLong(3, c)"));
+            int a = generated.indexOf("setInt(_jmod_idx++, a)");
+            int b = generated.indexOf("setString(_jmod_idx++, b)");
+            int c = generated.indexOf("setLong(_jmod_idx++, c)");
+            assertTrue(a >= 0 && a < b && b < c, generated);
         }
 
         @ParameterizedTest(name = "{0} uses {1}")
@@ -242,7 +243,7 @@ class SQLModuleTest {
                     select * from t where col = #[p]<%s>
                     }
                     """.formatted(javaType));
-            assertTrue(generated.contains(setter + "(1, p)"), generated);
+            assertTrue(generated.contains(setter + "(_jmod_idx++, p)"), generated);
             assertTrue(generated.contains("public Typed(" + sourceType + " p)"), generated);
             assertTrue(generated.contains("private " + sourceType + " p"), generated);
         }
@@ -251,7 +252,7 @@ class SQLModuleTest {
         @ValueSource(strings = {
                 "java.net.URI",
                 "java.util.List",
-                "int[]",
+                "java.net.URI[]",
                 "StringBuilder",
                 "java.sql.Connection"
         })
@@ -275,8 +276,48 @@ class SQLModuleTest {
                     }
                     """);
             assertTrue(generated.contains("id = ? and name = ?"));
-            assertTrue(generated.contains("setString(1, name)"));
-            assertFalse(generated.contains("setString(2,"));
+            assertTrue(generated.contains("setString(_jmod_idx++, name)"));
+            assertFalse(generated.contains("setString(_jmod_idx++, 2"));
+        }
+
+        @Test
+        void expandsJavaArrayInList(@TempDir Path temp) throws Exception {
+            String generated = evaluate(temp, """
+                    public external ByNames extends SQLQuery {
+                    select * from users where nickname in #[names]<String[]>
+                    }
+                    """);
+            assertTrue(generated.contains("public ByNames(String[] names)"));
+            assertTrue(generated.contains("private String[] names"));
+            assertTrue(generated.contains("where nickname in (#EXPAND:names)"));
+            assertTrue(generated.contains("SqlIn.expand(this.sqlStatement, \"names\", names)"));
+            assertTrue(generated.contains("for (int _jmod_names = 0; _jmod_names < names.length; _jmod_names++)"));
+            assertTrue(generated.contains("setString(_jmod_idx++, names[_jmod_names])"));
+            assertFalse(generated.contains("setString(_jmod_idx++, names)"));
+        }
+
+        @Test
+        void expandsPrimitiveIntArrayInList(@TempDir Path temp) throws Exception {
+            String generated = evaluate(temp, """
+                    public external ByIds extends SQLQuery {
+                    select * from t where id in #[ids]<int[]>
+                    }
+                    """);
+            assertTrue(generated.contains("public ByIds(int[] ids)"));
+            assertTrue(generated.contains("where id in (#EXPAND:ids)"));
+            assertTrue(generated.contains("setInt(_jmod_idx++, ids[_jmod_ids])"));
+        }
+
+        @Test
+        void byteArrayRemainsBlobParameter(@TempDir Path temp) throws Exception {
+            String generated = evaluate(temp, """
+                    public external ByBlob extends SQLQuery {
+                    select * from t where payload = #[payload]<byte[]>
+                    }
+                    """);
+            assertTrue(generated.contains("where payload = ?"));
+            assertFalse(generated.contains("#EXPAND:"));
+            assertTrue(generated.contains("setBytes(_jmod_idx++, payload)"));
         }
     }
 
@@ -344,7 +385,8 @@ class SQLModuleTest {
             assertTrue(generated.contains("this.left = left"));
             assertTrue(generated.contains("this.right = right"));
             assertTrue(generated.contains("super(new org.jmod.dsl.sql.SQLConfiguration())"));
-            assertTrue(generated.contains("PreparedStatement pstmnt = c.prepareStatement(this.sqlStatement)"));
+            assertTrue(generated.contains("String sql = SqlIn.expand(this.sqlStatement"));
+            assertTrue(generated.contains("PreparedStatement pstmnt = c.prepareStatement(sql)"));
             assertTrue(generated.contains("return pstmnt"));
         }
 
@@ -431,7 +473,7 @@ class SQLModuleTest {
         return Stream.of(
                 Arguments.of("select", "select * from items"),
                 Arguments.of("select distinct", "select distinct name from items"),
-                Arguments.of("join", "select a.id from a join b on a.id = b.aid where a.name = #[name]<String>"),
+                Arguments.of("in list array", "select * from items where id in #[ids]<int[]>"),
                 Arguments.of("subquery",
                         "select * from items where id in (select item_id from bids where amount > #[min]<int>)"),
                 Arguments.of("group having",

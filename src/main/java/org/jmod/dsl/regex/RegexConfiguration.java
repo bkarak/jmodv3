@@ -1,6 +1,5 @@
 package org.jmod.dsl.regex;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.jmod.dsl.module.ExternalConfiguration;
@@ -16,14 +15,6 @@ public class RegexConfiguration extends ExternalConfiguration {
     public RegexConfiguration() {
         validators.put("REGEX_ENGINE", new StringArrayValidator("jdk"));
         validators.put("REGEX_OUTPUT", new StringArrayValidator("java"));
-    }
-
-    @Override
-    public Map<String, String> getModuleConfiguration() {
-        Map<String, String> result = new LinkedHashMap<>();
-        result.put("REGEX_ENGINE", REGEX_ENGINE);
-        result.put("REGEX_OUTPUT", REGEX_OUTPUT);
-        return result;
     }
 
     @Override

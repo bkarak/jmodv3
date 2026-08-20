@@ -46,8 +46,9 @@ public class RegexModule extends Module {
             throw new ModuleException("invalid regular expression: " + e.getDescription()
                     + " near index " + e.getIndex(), e);
         }
-        String configurationFqcn = resolveConfiguration(cu);
-        String configurationSimple = configurationFqcn.substring(configurationFqcn.lastIndexOf('.') + 1);
+        Type configurationType = resolveConfigurationType(cu);
+        String configurationFqcn = configurationType.getQualifiedName();
+        String configurationSimple = configurationType.getName();
         BaseVelocityWriter writer = new BaseVelocityWriter("templates/regex.vm", getName());
         writer.add("PACKAGE", cu.getPackageName());
         writer.add("CLASSNAME", cu.getExternalTypeName());
@@ -108,22 +109,4 @@ public class RegexModule extends Module {
         };
     }
 
-    private static String resolveConfiguration(CodeUnit cu) {
-        String name = cu.getConfigurationTypeName();
-        if (name == null || name.isBlank()) {
-            return "org.jmod.dsl.regex.RegexConfiguration";
-        }
-        if (name.indexOf('.') >= 0) {
-            return name;
-        }
-        for (String imported : cu.getImports()) {
-            if (imported.endsWith("." + name)) {
-                return imported;
-            }
-        }
-        if (!cu.getPackageName().isEmpty()) {
-            return cu.getPackageName() + "." + name;
-        }
-        return "org.jmod.dsl.regex.RegexConfiguration";
-    }
 }

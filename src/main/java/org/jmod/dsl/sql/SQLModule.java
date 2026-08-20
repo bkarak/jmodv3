@@ -65,32 +65,29 @@ public class SQLModule extends Module {
         if (Boolean.parseBoolean(cfg.getOrDefault("SQLMOD_NS_AWARE", "false"))) {
             File baseDir = cu.getSourceFile() == null ? null : cu.getSourceFile().getFile().getParentFile();
             DbSchema schema = DbSchema.load(cfg.getOrDefault("SQLMOD_NS_URI", ""), baseDir);
-            SchemaChecker.check(parsed, schema);
+            SchemaChecker.check(parsed, schema, occurrences, typeMapping);
         }
         if (Boolean.parseBoolean(cfg.getOrDefault("SQLMOD_LIVE_TEST", "false"))) {
             String literalSql = ExternalRefs.replaceWithLiterals(cu.getDslBody(), typeMapping::defaultLiteral).trim();
             LiveJdbc.execute(collapseWhitespace(literalSql), cfg);
         }
 
-        String configurationFqcn = resolveConfiguration(cu);
-        String configurationSimple = configurationFqcn.substring(configurationFqcn.lastIndexOf('.') + 1);
+        Type configurationType = resolveConfigurationType(cu);
+        String configurationFqcn = configurationType.getQualifiedName();
+        String configurationSimple = configurationType.getName();
 
         List<String> declarations = new ArrayList<>();
         List<String> ctorParams = new ArrayList<>();
         List<NamedVar> mapped = new ArrayList<>();
+        StringBuilder expandArgs = new StringBuilder();
         for (ExternalRef param : cu.getUniqueParameters()) {
             String javaType = ExternalRefs.toJavaSourceType(param.getType());
             declarations.add(javaType + " " + param.getName());
             ctorParams.add(javaType + " " + param.getName());
             mapped.add(new NamedVar(param.getName()));
-        }
-
-        List<String> setters = new ArrayList<>();
-        int index = 1;
-        for (ExternalRef occurrence : occurrences) {
-            setters.add(typeMapping.setterFor(occurrence.getType()) + "(" + index + ", "
-                    + occurrence.getName() + ")");
-            index++;
+            if (ExternalRefs.isInArrayType(param.getType())) {
+                expandArgs.append(", \"").append(param.getName()).append("\", ").append(param.getName());
+            }
         }
 
         BaseVelocityWriter writer = new BaseVelocityWriter("templates/sql.vm", getName());
@@ -98,11 +95,13 @@ public class SQLModule extends Module {
         writer.add("CLASSNAME", cu.getExternalTypeName());
         writer.add("CLASS_CONFIGURATION", configurationFqcn);
         writer.add("CLASS_CONFIGURATION_SIMPLE", configurationSimple);
-        writer.add("SQL_CODE", JavaStrings.escape(collapseWhitespace(parameterized)));
+        writer.add("SQL_CODE", JavaStrings.escape(collapseWhitespace(
+                ExternalRefs.replaceWithCodegenSql(cu.getDslBody()))));
+        writer.add("SQL_IN_EXPAND_ARGS", expandArgs.toString());
         writer.add("SQL_CODE_VAR_DECL", declarations);
         writer.add("SQL_CODE_CONSTRUCTOR", String.join(", ", ctorParams));
         writer.add("SQL_CODE_MAPPED_TYPES", mapped);
-        writer.add("SQL_CODE_PS_STATEMENTS", setters);
+        writer.add("SQL_CODE_PS_STATEMENTS", preparedStatementSetters(occurrences));
         if (cu.getSourceFile() == null) {
             throw new ModuleException("missing source file for " + cu.getExternalTypeName());
         }
@@ -110,6 +109,28 @@ public class SQLModule extends Module {
             throw new ModuleException("failed to write generated source for " + cu.getExternalTypeName());
         }
         return true;
+    }
+
+    private List<String> preparedStatementSetters(List<ExternalRef> occurrences) {
+        List<String> setters = new ArrayList<>();
+        for (ExternalRef occurrence : occurrences) {
+            if (ExternalRefs.isInArrayType(occurrence.getType())) {
+                setters.add(inListSetter(occurrence));
+            } else {
+                setters.add("pstmnt." + typeMapping.setterFor(occurrence.getType())
+                        + "(_jmod_idx++, " + occurrence.getName() + ");");
+            }
+        }
+        return setters;
+    }
+
+    private String inListSetter(ExternalRef occurrence) {
+        String name = occurrence.getName();
+        String setter = typeMapping.setterFor(ExternalRefs.elementType(occurrence.getType()));
+        String loop = "_jmod_" + name;
+        return "for (int " + loop + " = 0; " + loop + " < " + name + ".length; " + loop + "++) {\n"
+                + "            pstmnt." + setter + "(_jmod_idx++, " + name + "[" + loop + "]);\n"
+                + "        }";
     }
 
     @Override
@@ -140,25 +161,6 @@ public class SQLModule extends Module {
     @Override
     public TypeMapping getTypeMap() {
         return typeMapping;
-    }
-
-    private static String resolveConfiguration(CodeUnit cu) {
-        String name = cu.getConfigurationTypeName();
-        if (name == null || name.isBlank()) {
-            return "org.jmod.dsl.sql.SQLConfiguration";
-        }
-        if (name.indexOf('.') >= 0) {
-            return name;
-        }
-        for (String imported : cu.getImports()) {
-            if (imported.endsWith("." + name)) {
-                return imported;
-            }
-        }
-        if (!cu.getPackageName().isEmpty()) {
-            return cu.getPackageName() + "." + name;
-        }
-        return "org.jmod.dsl.sql.SQLConfiguration";
     }
 
     private static String collapseWhitespace(String sql) {
