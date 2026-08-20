@@ -3,6 +3,7 @@ package org.jmod.compiler.api;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -27,6 +28,8 @@ class JmodPortsTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("org.jmod.JmodPortsFixtures#allJmodArguments")
     void compilesEachPortFile(String relative, Path jmod, @TempDir Path scratch) throws Exception {
+        assumeFalse(relative.contains("jmod-live-database"),
+                "live-database ports need a running JDBC server; covered by SQLModuleSchemaAndLiveTest");
         Path input = scratch.resolve("in");
         Path output = scratch.resolve("out");
         Files.createDirectories(input);
@@ -36,7 +39,7 @@ class JmodPortsTest {
             try (Stream<Path> siblings = Files.list(parent)) {
                 for (Path sibling : siblings.toList()) {
                     String name = sibling.getFileName().toString();
-                    if (name.endsWith("Configuration.java")) {
+                    if (name.endsWith("Configuration.java") || name.endsWith(".sql")) {
                         Files.copy(sibling, input.resolve(name));
                     }
                 }
@@ -61,8 +64,7 @@ class JmodPortsTest {
                 "examj/jmod",
                 "jcrontab/jmod",
                 "sdriver/jmod",
-                "RUBiS/jmod",
-                "benchmarking/jmod-sql-compiler/jmod-live-database");
+                "RUBiS/jmod");
         for (String port : ports) {
             Path input = JmodPortsFixtures.root().resolve(port);
             Path dest = output.resolve(port.replace('/', '_'));

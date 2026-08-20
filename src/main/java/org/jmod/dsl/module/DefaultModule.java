@@ -62,4 +62,9 @@ public class DefaultModule extends Module {
     public Map<String, String> getDefaultConfiguration() {
         return new DefaultConfiguration().getRuntimeConfiguration();
     }
+
+    @Override
+    public ExternalConfiguration newConfiguration() {
+        return new DefaultConfiguration();
+    }
 }

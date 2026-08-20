@@ -35,6 +35,10 @@ public abstract class Module {
 
     public abstract Map<String, String> getDefaultConfiguration();
 
+    public ExternalConfiguration newConfiguration() {
+        return null;
+    }
+
     public abstract boolean evaluate(CodeUnit cu, Map<String, String> context) throws ModuleException;
 
     public abstract String getName();

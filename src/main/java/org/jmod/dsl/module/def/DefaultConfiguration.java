@@ -13,7 +13,7 @@ public class DefaultConfiguration extends ExternalConfiguration {
     }
 
     @Override
-    protected Map<String, String> getModuleConfiguration() {
+    public Map<String, String> getModuleConfiguration() {
         return new LinkedHashMap<>();
     }
 

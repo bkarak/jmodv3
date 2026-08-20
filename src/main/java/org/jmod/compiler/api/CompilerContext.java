@@ -18,7 +18,10 @@ public final class CompilerContext {
     private File outputDir = new File("work").getAbsoluteFile();
     private boolean printingExternalContext;
     private boolean dumpSymbolTable;
+    private boolean dumpContext;
     private boolean jmodOnly;
+    private boolean compileWithJavac = true;
+    private String metricsFile;
     private final List<File> inputDirs = new ArrayList<>();
     private final List<SourceFile> sourceFiles = new ArrayList<>();
     private ModuleList moduleList = new ModuleList();
@@ -63,6 +66,30 @@ public final class CompilerContext {
         this.dumpSymbolTable = dumpSymbolTable;
     }
 
+    public boolean isDumpContext() {
+        return dumpContext;
+    }
+
+    public void setDumpContext(boolean dumpContext) {
+        this.dumpContext = dumpContext;
+    }
+
+    public boolean isCompileWithJavac() {
+        return compileWithJavac;
+    }
+
+    public void setCompileWithJavac(boolean compileWithJavac) {
+        this.compileWithJavac = compileWithJavac;
+    }
+
+    public String getMetricsFile() {
+        return metricsFile;
+    }
+
+    public void setMetricsFile(String metricsFile) {
+        this.metricsFile = metricsFile;
+    }
+
     public boolean isJmodOnly() {
         return jmodOnly;
     }
@@ -101,6 +128,10 @@ public final class CompilerContext {
         sb.append("---------------------").append(System.lineSeparator());
         sb.append("Current Directory: ").append(currentDir).append(System.lineSeparator());
         sb.append("Output Directory: ").append(outputDir).append(System.lineSeparator());
+        sb.append("Compile with javac: ").append(compileWithJavac).append(System.lineSeparator());
+        if (metricsFile != null) {
+            sb.append("Metrics file: ").append(metricsFile).append(System.lineSeparator());
+        }
         sb.append("---EXTERNAL modules---").append(System.lineSeparator());
         for (Module module : moduleList.getModules()) {
             sb.append(module.getName()).append(" - ").append(module.getDescription())

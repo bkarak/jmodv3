@@ -57,6 +57,22 @@ public final class ExternalRefs {
         return PATTERN.matcher(body).replaceAll("?");
     }
 
+    public static String replaceWithLiterals(String body, java.util.function.Function<String, String> literalForType) {
+        Matcher matcher = PATTERN.matcher(body);
+        StringBuilder result = new StringBuilder();
+        int last = 0;
+        while (matcher.find()) {
+            result.append(body, last, matcher.start());
+            String type = matcher.group(2) == null || matcher.group(2).isBlank()
+                    ? DEFAULT_TYPE
+                    : matcher.group(2).trim();
+            result.append(literalForType.apply(type));
+            last = matcher.end();
+        }
+        result.append(body.substring(last));
+        return result.toString();
+    }
+
     public static String canonicalType(String type) {
         String trimmed = type.trim().replace(" ", "");
         if (trimmed.indexOf('.') >= 0) {

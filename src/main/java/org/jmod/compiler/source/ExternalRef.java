@@ -26,6 +26,23 @@ public final class ExternalRef {
         return type;
     }
 
+    /** Velocity alias used by GetSet / SQL templates. */
+    public String getVarName() {
+        return name;
+    }
+
+    /** Java source type for generated fields. */
+    public String getTypeName() {
+        return ExternalRefs.toJavaSourceType(type);
+    }
+
+    public String getAccessorSuffix() {
+        if (name.isEmpty()) {
+            return name;
+        }
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
     public int getLine() {
         return line;
     }

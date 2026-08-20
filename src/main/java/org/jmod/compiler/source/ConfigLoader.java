@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 import org.jmod.dsl.module.ExternalConfiguration;
 import org.jmod.dsl.module.Module;
+import org.jmod.dsl.module.configuration.FileUriValidator;
 import org.jmod.symbol.Type;
 
 /**
@@ -136,7 +137,15 @@ public final class ConfigLoader {
                 }
                 Matcher fields = FIELD.matcher(source);
                 while (fields.find()) {
-                    context.put(fields.group(2), unquote(fields.group(3).trim()));
+                    String key = fields.group(2);
+                    String value = unquote(fields.group(3).trim());
+                    if ("SQLMOD_NS_URI".equals(key)) {
+                        File resolved = FileUriValidator.toFile(value, file.getFile().getParentFile());
+                        if (resolved != null) {
+                            value = resolved.getAbsolutePath();
+                        }
+                    }
+                    context.put(key, value);
                 }
             } catch (IOException ignored) {
                 // skip unreadable files
@@ -160,6 +169,9 @@ public final class ConfigLoader {
         }
         if ("RegexConfiguration".equals(parent)) {
             return "org.jmod.dsl.regex.RegexConfiguration";
+        }
+        if ("GetSetConfiguration".equals(parent)) {
+            return "org.jmod.dsl.getset.GetSetConfiguration";
         }
         if ("ExternalConfiguration".equals(parent)) {
             return "org.jmod.dsl.module.ExternalConfiguration";

@@ -1,5 +1,6 @@
 package org.jmod.dsl.sql;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -8,15 +9,19 @@ import org.jmod.compiler.source.CodeUnit;
 import org.jmod.compiler.source.ExternalRef;
 import org.jmod.compiler.source.ExternalRefs;
 import org.jmod.compiler.source.JavaStrings;
+import org.jmod.dsl.module.ExternalConfiguration;
 import org.jmod.dsl.module.Module;
 import org.jmod.dsl.module.ModuleException;
 import org.jmod.dsl.module.TypeMapping;
 import org.jmod.dsl.module.metaprogramming.BaseVelocityWriter;
 import org.jmod.dsl.module.metaprogramming.NamedVar;
+import org.jmod.dsl.sql.db.DbSchema;
+import org.jmod.dsl.sql.db.SchemaChecker;
 import org.jmod.symbol.Type;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
 
 /**
  * SQL DSL module: syntax check, JDBC type mapping, prepared-statement codegen.
@@ -35,7 +40,13 @@ public class SQLModule extends Module {
     }
 
     @Override
+    public ExternalConfiguration newConfiguration() {
+        return new SQLConfiguration();
+    }
+
+    @Override
     public boolean evaluate(CodeUnit cu, Map<String, String> context) throws ModuleException {
+        Map<String, String> cfg = context == null ? Map.of() : context;
         List<ExternalRef> occurrences = cu.getExternalReferences();
         for (ExternalRef ref : occurrences) {
             if (!typeMapping.acceptsJavaType(ref.getType())) {
@@ -44,10 +55,21 @@ public class SQLModule extends Module {
             }
         }
         String parameterized = ExternalRefs.replaceWithPlaceholders(cu.getDslBody()).trim();
+        Statement parsed;
         try {
-            CCJSqlParserUtil.parse(parameterized);
+            parsed = CCJSqlParserUtil.parse(parameterized);
         } catch (JSQLParserException e) {
             throw new ModuleException("invalid SQL: " + rootMessage(e), e);
+        }
+
+        if (Boolean.parseBoolean(cfg.getOrDefault("SQLMOD_NS_AWARE", "false"))) {
+            File baseDir = cu.getSourceFile() == null ? null : cu.getSourceFile().getFile().getParentFile();
+            DbSchema schema = DbSchema.load(cfg.getOrDefault("SQLMOD_NS_URI", ""), baseDir);
+            SchemaChecker.check(parsed, schema);
+        }
+        if (Boolean.parseBoolean(cfg.getOrDefault("SQLMOD_LIVE_TEST", "false"))) {
+            String literalSql = ExternalRefs.replaceWithLiterals(cu.getDslBody(), typeMapping::defaultLiteral).trim();
+            LiveJdbc.execute(collapseWhitespace(literalSql), cfg);
         }
 
         String configurationFqcn = resolveConfiguration(cu);

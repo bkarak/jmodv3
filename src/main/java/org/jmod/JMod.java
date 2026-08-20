@@ -1,6 +1,7 @@
 package org.jmod;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -40,29 +41,41 @@ public final class JMod {
                 case OPT_MODULE_LIST:
                     printModules(compiler, out);
                     return 0;
-                case OPT_SYMBOL_TABLE:
-                case OPT_JMOD_ONLY:
-                    options.put(option, "true");
-                    break;
-                case OPT_INPUT_DIR:
-                case OPT_OUTPUT_DIR:
-                    if (i + 1 >= args.length) {
-                        err.println("missing value for " + arg);
-                        return 2;
-                    }
-                    options.put(option, args[++i]);
-                    break;
                 default:
-                    options.put(option, "true");
+                    if (option.hasArgument()) {
+                        if (i + 1 >= args.length) {
+                            err.println("missing value for " + arg);
+                            return 2;
+                        }
+                        options.put(option, args[++i]);
+                    } else {
+                        options.put(option, "true");
+                    }
                     break;
             }
+        }
+        if (options.containsKey(CompilerOption.OPT_COMPILER_CONTEXT)
+                && !options.containsKey(CompilerOption.OPT_INPUT_DIR)) {
+            out.print(compiler.getCompilerContext().dump());
+            return 0;
         }
         if (!options.containsKey(CompilerOption.OPT_INPUT_DIR)) {
             err.println("missing required option -i / --input-dir");
             printHelp(err);
             return 2;
         }
-        boolean ok = compiler.compile(options, new String[0], out);
+        boolean xml = options.containsKey(CompilerOption.OPT_XML_OUTPUT);
+        StringWriter buffer = xml ? new StringWriter() : null;
+        PrintWriter log = xml ? new PrintWriter(buffer, true) : out;
+        boolean ok = compiler.compile(options, new String[0], log);
+        if (xml) {
+            log.flush();
+            out.println("<jmod>");
+            out.println("  <log><![CDATA[");
+            out.print(buffer.toString().replace("]]>", "]]]]><![CDATA[>"));
+            out.println("]]></log>");
+            out.println("</jmod>");
+        }
         return ok ? 0 : 1;
     }
 

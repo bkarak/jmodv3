@@ -16,15 +16,27 @@ class JModCliTest {
         assertEquals(0, status);
         assertTrue(out.toString().contains("Regex"));
         assertTrue(out.toString().contains("SQLModule"));
-        assertTrue(out.toString().contains("Default module"));
+        assertTrue(out.toString().contains("GetSet"));
     }
 
     @Test
-    void printsHelp() {
+    void printsCompilerContextWithoutInput() {
+        StringWriter out = new StringWriter();
+        int status = JMod.run(new String[] {"-cc"}, new PrintWriter(out, true), new PrintWriter(new StringWriter()));
+        assertEquals(0, status);
+        assertTrue(out.toString().contains("Compiler Context Dump"));
+    }
+
+    @Test
+    void helpListsNewFlags() {
         StringWriter out = new StringWriter();
         int status = JMod.run(new String[] {"-h"}, new PrintWriter(out, true), new PrintWriter(new StringWriter()));
         assertEquals(0, status);
-        assertTrue(out.toString().contains("Usage"));
+        assertTrue(out.toString().contains("--metrics"));
+        assertTrue(out.toString().contains("--work-dir"));
+        assertTrue(out.toString().contains("--print-external-context"));
+        assertTrue(out.toString().contains("--no-javac"));
+        assertTrue(out.toString().contains("--output-xml"));
     }
 
     @Test

@@ -30,9 +30,11 @@ import org.jmod.compiler.source.ConfigLoader;
 import org.jmod.compiler.source.JmodParser;
 import org.jmod.compiler.source.ParseException;
 import org.jmod.compiler.source.SourceFile;
+import org.jmod.dsl.module.ExternalConfiguration;
 import org.jmod.dsl.module.Module;
 import org.jmod.dsl.module.ModuleException;
 import org.jmod.dsl.module.ModuleList;
+import org.jmod.metrics.MetricsReport;
 import org.jmod.symbol.SymbolKind;
 import org.jmod.symbol.SymbolTable;
 import org.jmod.symbol.Type;
@@ -126,6 +128,14 @@ public class Compiler {
         if (context.isDumpSymbolTable()) {
             out.print(symbols.dump());
         }
+        if (context.getMetricsFile() != null && !context.getMetricsFile().isBlank()) {
+            try {
+                MetricsReport.write(new File(context.getMetricsFile()), sources, externals);
+            } catch (IOException e) {
+                out.println("error: could not write metrics file: " + e.getMessage());
+                ok = false;
+            }
+        }
 
         for (CodeUnit unit : externals) {
             Module module = modules.findFor(unit, symbols);
@@ -138,6 +148,16 @@ public class Compiler {
             Map<String, String> cfg = ConfigLoader.load(unit, module, sources);
             if (context.isPrintingExternalContext()) {
                 out.println(unit.getExternalTypeName() + " context: " + Module.exportContext(cfg));
+            }
+            ExternalConfiguration configuration = module.newConfiguration();
+            if (configuration != null) {
+                for (String error : configuration.validationErrors(cfg)) {
+                    out.println(unit.describeLocation() + ": " + error);
+                    ok = false;
+                }
+                if (!configuration.isValid(cfg)) {
+                    continue;
+                }
             }
             try {
                 if (!module.evaluate(unit, cfg)) {
@@ -163,10 +183,19 @@ public class Compiler {
         }
 
         if (!ok) {
+            if (context.isDumpContext()) {
+                out.print(context.dump());
+            }
             out.flush();
             return false;
         }
-        boolean compiled = invokeJavac(context, out);
+        boolean compiled = true;
+        if (context.isCompileWithJavac()) {
+            compiled = invokeJavac(context, out);
+        }
+        if (context.isDumpContext()) {
+            out.print(context.dump());
+        }
         out.flush();
         return compiled;
     }
@@ -224,11 +253,29 @@ public class Compiler {
                 }
             }
         }
+        if (options.containsKey(CompilerOption.OPT_WORK_DIR) && !options.containsKey(CompilerOption.OPT_OUTPUT_DIR)) {
+            context.setOutputDir(new File(options.get(CompilerOption.OPT_WORK_DIR)));
+        }
         if (options.containsKey(CompilerOption.OPT_OUTPUT_DIR)) {
             context.setOutputDir(new File(options.get(CompilerOption.OPT_OUTPUT_DIR)));
         }
         if (options.containsKey(CompilerOption.OPT_SYMBOL_TABLE)) {
             context.setDumpSymbolTable(true);
+        }
+        if (options.containsKey(CompilerOption.OPT_COMPILER_CONTEXT)) {
+            context.setDumpContext(true);
+        }
+        if (options.containsKey(CompilerOption.OPT_PRINT_EXTERNAL_CONTEXT)) {
+            context.setPrintingExternalContext(true);
+        }
+        if (options.containsKey(CompilerOption.OPT_METRICS)) {
+            context.setMetricsFile(options.get(CompilerOption.OPT_METRICS));
+        }
+        if (options.containsKey(CompilerOption.OPT_JAVAC)) {
+            context.setCompileWithJavac(true);
+        }
+        if (options.containsKey(CompilerOption.OPT_NO_JAVAC)) {
+            context.setCompileWithJavac(false);
         }
         if (options.containsKey(CompilerOption.OPT_JMOD_ONLY)) {
             context.setJmodOnly(true);

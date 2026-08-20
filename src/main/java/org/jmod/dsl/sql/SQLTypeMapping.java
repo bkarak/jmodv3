@@ -153,6 +153,47 @@ public final class SQLTypeMapping extends DefaultMapping {
         }
     }
 
+    public String defaultLiteral(String javaType) {
+        switch (ExternalRefs.canonicalType(javaType)) {
+            case "boolean":
+            case "java.lang.Boolean":
+                return "false";
+            case "byte":
+            case "java.lang.Byte":
+            case "short":
+            case "java.lang.Short":
+            case "int":
+            case "java.lang.Integer":
+            case "long":
+            case "java.lang.Long":
+                return "1";
+            case "float":
+            case "java.lang.Float":
+            case "double":
+            case "java.lang.Double":
+            case "java.math.BigDecimal":
+            case "java.math.BigInteger":
+            case "java.lang.Number":
+                return "0.0";
+            case "java.sql.Date":
+            case "java.time.LocalDate":
+                return "'2000-01-01'";
+            case "java.sql.Time":
+            case "java.time.LocalTime":
+                return "'23:59:59'";
+            case "java.sql.Timestamp":
+            case "java.util.Date":
+            case "java.util.Calendar":
+            case "java.time.LocalDateTime":
+            case "java.time.Instant":
+            case "java.time.OffsetDateTime":
+            case "java.time.ZonedDateTime":
+                return "'2000-01-01 23:59:59'";
+            default:
+                return "'a'";
+        }
+    }
+
     /**
      * @param javas Java types; the first is dominant for each SQL type
      * @param sqls JDBC / vendor SQL type names; the first is dominant for each Java type

@@ -4,19 +4,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.jmod.dsl.module.ExternalConfiguration;
+import org.jmod.dsl.module.configuration.StringArrayValidator;
 
 /**
- * Compile-time configuration for the regular-expression module.
+ * Compile-time configuration for the regular-expression module (JDK {@code Pattern} only).
  */
 public class RegexConfiguration extends ExternalConfiguration {
-    protected String REGEX_ENGINE = "jdk";
-    protected String REGEX_OUTPUT = "java";
+    public String REGEX_ENGINE = "jdk";
+    public String REGEX_OUTPUT = "java";
 
     public RegexConfiguration() {
+        validators.put("REGEX_ENGINE", new StringArrayValidator("jdk"));
+        validators.put("REGEX_OUTPUT", new StringArrayValidator("java"));
     }
 
     @Override
-    protected Map<String, String> getModuleConfiguration() {
+    public Map<String, String> getModuleConfiguration() {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("REGEX_ENGINE", REGEX_ENGINE);
         result.put("REGEX_OUTPUT", REGEX_OUTPUT);

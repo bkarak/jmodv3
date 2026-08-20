@@ -24,12 +24,12 @@ class RegexModuleTest {
     }
 
     @Test
-    void rejectsFirejEngine(@TempDir Path temp) throws Exception {
+    void rejectsUnknownEngine(@TempDir Path temp) throws Exception {
         CodeUnit unit = unit(temp, "public external Ok extends Regex<RegexConfiguration> {\na+\n}\n");
         RegexModule module = new RegexModule();
         ModuleException error = assertThrows(ModuleException.class,
-                () -> module.evaluate(unit, Map.of("REGEX_ENGINE", "firej")));
-        assertTrue(error.getMessage().contains("FIRE/J"));
+                () -> module.evaluate(unit, Map.of("REGEX_ENGINE", "pcre")));
+        assertTrue(error.getMessage().contains("unsupported regex engine"));
     }
 
     @Test

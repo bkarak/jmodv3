@@ -1,11 +1,8 @@
-package org.jmod.dsl.regex;
+package org.jmod.dsl.getset;
 
 import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 import org.jmod.compiler.source.CodeUnit;
-import org.jmod.compiler.source.JavaStrings;
 import org.jmod.dsl.module.DefaultMapping;
 import org.jmod.dsl.module.ExternalConfiguration;
 import org.jmod.dsl.module.Module;
@@ -15,45 +12,37 @@ import org.jmod.dsl.module.metaprogramming.BaseVelocityWriter;
 import org.jmod.symbol.Type;
 
 /**
- * Regular-expression DSL module (JDK {@link Pattern} backend).
+ * Generates Java fields plus optional getters and setters from {@code #[name]<Type>}.
  */
-public class RegexModule extends Module {
+public class GetSetModule extends Module {
     @Override
     public Type getConfigurationType() {
-        return new Type("org.jmod.dsl.regex", "RegexConfiguration");
+        return new Type("org.jmod.dsl.getset", "GetSetConfiguration");
     }
 
     @Override
     public Map<String, String> getDefaultConfiguration() {
-        return new RegexConfiguration().getModuleConfiguration();
+        return new GetSetConfiguration().getModuleConfiguration();
     }
 
     @Override
     public ExternalConfiguration newConfiguration() {
-        return new RegexConfiguration();
+        return new GetSetConfiguration();
     }
 
     @Override
     public boolean evaluate(CodeUnit cu, Map<String, String> context) throws ModuleException {
-        String engine = context == null ? "jdk" : context.getOrDefault("REGEX_ENGINE", "jdk");
-        if (!"jdk".equalsIgnoreCase(engine)) {
-            throw new ModuleException("unsupported regex engine '" + engine + "'; only jdk is supported");
-        }
-        String body = cu.getDslBody() == null ? "" : cu.getDslBody().trim();
-        try {
-            Pattern.compile(body);
-        } catch (PatternSyntaxException e) {
-            throw new ModuleException("invalid regular expression: " + e.getDescription()
-                    + " near index " + e.getIndex(), e);
-        }
+        Map<String, String> cfg = context == null ? Map.of() : context;
         String configurationFqcn = resolveConfiguration(cu);
         String configurationSimple = configurationFqcn.substring(configurationFqcn.lastIndexOf('.') + 1);
-        BaseVelocityWriter writer = new BaseVelocityWriter("templates/regex.vm", getName());
+        BaseVelocityWriter writer = new BaseVelocityWriter("templates/getset.vm", getName());
         writer.add("PACKAGE", cu.getPackageName());
         writer.add("CLASSNAME", cu.getExternalTypeName());
         writer.add("CLASS_CONFIGURATION", configurationFqcn);
         writer.add("CLASS_CONFIGURATION_SIMPLE", configurationSimple);
-        writer.add("REGEX", JavaStrings.escape(body));
+        writer.add("GS_EXTREFS", cu.getUniqueParameters());
+        writer.add("GS_GEN_GETTER", cfg.getOrDefault("GS_GEN_GETTER", "true"));
+        writer.add("GS_GEN_SETTER", cfg.getOrDefault("GS_GEN_SETTER", "true"));
         if (cu.getSourceFile() == null) {
             throw new ModuleException("missing source file for " + cu.getExternalTypeName());
         }
@@ -61,31 +50,6 @@ public class RegexModule extends Module {
             throw new ModuleException("failed to write generated source for " + cu.getExternalTypeName());
         }
         return true;
-    }
-
-    @Override
-    public String getName() {
-        return "Regex";
-    }
-
-    @Override
-    public String getDescription() {
-        return "Regular expression library module";
-    }
-
-    @Override
-    public String getVersion() {
-        return "1.0";
-    }
-
-    @Override
-    public String getAuthor() {
-        return "Vassilios Karakoidas (bkarak@aueb.gr)";
-    }
-
-    @Override
-    public Type[] getExternalTypes() {
-        return new Type[] {new Type("org.jmod.dsl.regex", "Regex")};
     }
 
     @Override
@@ -108,10 +72,35 @@ public class RegexModule extends Module {
         };
     }
 
+    @Override
+    public String getName() {
+        return "GetSet";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Getter - Setter Generator";
+    }
+
+    @Override
+    public String getVersion() {
+        return "1.0";
+    }
+
+    @Override
+    public String getAuthor() {
+        return "Vassilios Karakoidas (bkarak@aueb.gr)";
+    }
+
+    @Override
+    public Type[] getExternalTypes() {
+        return new Type[] {new Type("org.jmod.dsl.getset", "GetSetType")};
+    }
+
     private static String resolveConfiguration(CodeUnit cu) {
         String name = cu.getConfigurationTypeName();
         if (name == null || name.isBlank()) {
-            return "org.jmod.dsl.regex.RegexConfiguration";
+            return "org.jmod.dsl.getset.GetSetConfiguration";
         }
         if (name.indexOf('.') >= 0) {
             return name;
@@ -124,6 +113,6 @@ public class RegexModule extends Module {
         if (!cu.getPackageName().isEmpty()) {
             return cu.getPackageName() + "." + name;
         }
-        return "org.jmod.dsl.regex.RegexConfiguration";
+        return "org.jmod.dsl.getset.GetSetConfiguration";
     }
 }

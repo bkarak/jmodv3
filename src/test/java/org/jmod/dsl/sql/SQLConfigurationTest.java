@@ -54,11 +54,11 @@ class SQLConfigurationTest {
         Map<String, String> runtime = configuration.getRuntimeConfiguration();
         assertFalse(runtime.containsKey("SQLMOD_NS_URI"));
         assertFalse(runtime.containsKey("SQLMOD_DB_PASSWORD"));
-        assertEquals("sa", runtime.get("SQLMOD_DB_LOGIN"));
-        assertEquals("jdbc:h2:mem:test", runtime.get("SQLMOD_DB_URL"));
+        assertFalse(runtime.containsKey("SQLMOD_DB_URL"));
+        assertFalse(runtime.containsKey("SQLMOD_JDBC_DRIVER"));
+        assertFalse(runtime.containsKey("SQLMOD_DB_LOGIN"));
         assertTrue(runtime.containsKey("SQLMOD_NS_AWARE"));
         assertTrue(runtime.containsKey("SQLMOD_LIVE_TEST"));
-        assertTrue(runtime.containsKey("SQLMOD_JDBC_DRIVER"));
     }
 
     @Test

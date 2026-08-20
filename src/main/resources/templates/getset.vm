@@ -1,0 +1,28 @@
+#if($PACKAGE && $PACKAGE != "")
+package $PACKAGE;
+#end
+import org.jmod.dsl.getset.GetSetType;
+import $CLASS_CONFIGURATION;
+
+public class $CLASSNAME extends GetSetType<$CLASS_CONFIGURATION_SIMPLE> {
+    public $CLASSNAME() {
+        super(new $CLASS_CONFIGURATION());
+    }
+
+#foreach( $EXTREF in $GS_EXTREFS )
+    private $EXTREF.getTypeName() $EXTREF.getVarName();
+
+#if( $GS_GEN_GETTER == "true" )
+    public $EXTREF.getTypeName() get$EXTREF.getAccessorSuffix()() {
+        return this.$EXTREF.getVarName();
+    }
+#end
+
+#if( $GS_GEN_SETTER == "true" )
+    public void set$EXTREF.getAccessorSuffix()($EXTREF.getTypeName() v) {
+        this.$EXTREF.getVarName() = v;
+    }
+#end
+
+#end
+}
