@@ -156,3 +156,7 @@ java -cp out:target/jmod-0.1.0-SNAPSHOT.jar examples.simpleregex.Main
 
 - Vassilios Karakoidas, *J%*, PhD thesis, Athens University of Economics and Business.
 - V. Karakoidas, D. Mitropoulos, P. Louridas, D. Spinellis, [A type-safe embedding of SQL into Java using the extensible compiler framework J%](https://www.spinellis.gr/pubs/jrnl/2015-JLSS-jmod-sql/html/journal.pdf), *Computer Languages, Systems & Structures*, 2015.
+
+## License
+
+[MIT](LICENSE).
