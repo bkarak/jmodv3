@@ -16,13 +16,13 @@ The host syntax, package layout (`org.jmod.*`), and module API follow the J% the
 ./mvnw package
 ```
 
-The shaded compiler jar is `target/jmod-0.1.0-SNAPSHOT.jar`.
+The shaded compiler jar is `target/jmod-0.2.0.jar`.
 
 ## Compile
 
 ```sh
-java -jar target/jmod-0.1.0-SNAPSHOT.jar -i examples/simpleregex -o out
-java -jar target/jmod-0.1.0-SNAPSHOT.jar --help
+java -jar target/jmod-0.2.0.jar -i examples/simpleregex -o out
+java -jar target/jmod-0.2.0.jar --help
 ```
 
 GNU-style options; short and long forms are equivalent (`-i DIR` / `--input-dir=DIR`). Operands are extra input files or directories. Default output directory is `work/`.
@@ -140,8 +140,8 @@ Drafts 4, 6, 7, 2019-09, and 2020-12 are accepted (`$schema` selects the dialect
 ## Examples
 
 ```sh
-java -jar target/jmod-0.1.0-SNAPSHOT.jar -i examples/simpleregex -o out
-java -cp out:target/jmod-0.1.0-SNAPSHOT.jar examples.simpleregex.Main
+java -jar target/jmod-0.2.0.jar -i examples/simpleregex -o out
+java -cp out:target/jmod-0.2.0.jar examples.simpleregex.Main
 ```
 
 - `examples/simpleregex` — IP address regex
