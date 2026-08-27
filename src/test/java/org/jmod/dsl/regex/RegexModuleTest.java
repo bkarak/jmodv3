@@ -24,6 +24,45 @@ class RegexModuleTest {
     }
 
     @Test
+    void rejectsIllegalJavaEscapeBeforeJavac(@TempDir Path temp) throws Exception {
+        // File body is a\.b — a valid pattern as raw text, but an illegal escape
+        // once embedded in the generated string literal. It must fail here with a
+        // module error, not later as a javac error inside generated code.
+        CodeUnit unit = unit(temp, "public external Bad extends Regex<RegexConfiguration> {\na\\.b\n}\n");
+        RegexModule module = new RegexModule();
+        ModuleException error = assertThrows(ModuleException.class,
+                () -> module.evaluate(unit, Map.of("REGEX_ENGINE", "jdk")));
+        assertTrue(error.getMessage().contains("illegal escape sequence '\\.'"));
+        assertTrue(error.getMessage().contains("Java string literal"));
+    }
+
+    @Test
+    void validatesTheRuntimePatternNotTheRawBody(@TempDir Path temp) throws Exception {
+        // File body [\\] is a valid pattern as raw text (a class containing a
+        // backslash) but the literal's runtime value is [\] — an unclosed class.
+        // Before validation matched the runtime text, this generated code that
+        // threw PatternSyntaxException when the class was first used.
+        CodeUnit unit = unit(temp, "public external Bad extends Regex<RegexConfiguration> {\n[\\\\]\n}\n");
+        RegexModule module = new RegexModule();
+        ModuleException error = assertThrows(ModuleException.class,
+                () -> module.evaluate(unit, Map.of("REGEX_ENGINE", "jdk")));
+        assertTrue(error.getMessage().contains("invalid regular expression"));
+    }
+
+    @Test
+    void acceptsJavaStringStyleEscapes(@TempDir Path temp) throws Exception {
+        // \\d in the file — written as it would appear inside Java quotes — is
+        // the digit class at runtime, and the literal is emitted verbatim.
+        CodeUnit unit = unit(temp, "package p;\n"
+                + "import org.jmod.dsl.regex.Regex;\n"
+                + "import org.jmod.dsl.regex.RegexConfiguration;\n"
+                + "public external Digits extends Regex<RegexConfiguration> {\na\\\\dz\n}\n");
+        assertTrue(new RegexModule().evaluate(unit, Map.of("REGEX_ENGINE", "jdk")));
+        String generated = Files.readString(temp.resolve("p/Digits.java"));
+        assertTrue(generated.contains("a\\\\dz"));
+    }
+
+    @Test
     void rejectsUnknownEngine(@TempDir Path temp) throws Exception {
         CodeUnit unit = unit(temp, "public external Ok extends Regex<RegexConfiguration> {\na+\n}\n");
         RegexModule module = new RegexModule();

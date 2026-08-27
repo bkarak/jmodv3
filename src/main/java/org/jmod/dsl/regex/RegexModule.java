@@ -40,8 +40,21 @@ public class RegexModule extends Module {
             throw new ModuleException("unsupported regex engine '" + engine + "'; only jdk is supported");
         }
         String body = cu.getDslBody() == null ? "" : cu.getDslBody().trim();
+        // The template embeds the body in a Java string literal, so the pattern
+        // the runtime sees is that literal's unescaped value. Validate exactly
+        // that text: compiling the raw body would accept patterns that differ
+        // from the one that runs, and let illegal escapes surface as javac
+        // errors inside generated code.
+        String runtimePattern;
         try {
-            Pattern.compile(body);
+            runtimePattern = JavaStrings.unescape(JavaStrings.escape(body));
+        } catch (IllegalArgumentException e) {
+            throw new ModuleException("invalid regular expression: " + e.getMessage()
+                    + "; the body is embedded in a Java string literal, so write"
+                    + " Java-style backslashes (\\\\. for an escaped dot)", e);
+        }
+        try {
+            Pattern.compile(runtimePattern);
         } catch (PatternSyntaxException e) {
             throw new ModuleException("invalid regular expression: " + e.getDescription()
                     + " near index " + e.getIndex(), e);
