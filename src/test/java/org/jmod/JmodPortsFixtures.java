@@ -18,12 +18,14 @@ import org.junit.jupiter.params.provider.Arguments;
  */
 public final class JmodPortsFixtures {
     /**
-     * Original sources that are not valid J% (typos such as {@code imporg}).
+     * Fixtures that are not valid J% and are expected to fail compilation.
+     *
+     * <p>Empty since the three {@code imporg} typos in the benchmark sources were
+     * corrected upstream: every vendored fixture now compiles. Kept as the place to
+     * register a fixture that must fail, so that such a file is asserted about rather
+     * than quietly excluded from the corpus.
      */
-    public static final Set<String> KNOWN_BROKEN = Set.of(
-            "benchmarking/jmod-sql-compiler/jmod-simple/org/jmod/CustomerSelect.jmod",
-            "benchmarking/jmod-sql-compiler/jmod-ns-aware/org/jmod/CustomerSelect.jmod",
-            "benchmarking/jmod-sql-security/jmod-simple/org/jmod/CustomerSelect.jmod");
+    public static final Set<String> KNOWN_BROKEN = Set.of();
 
     private JmodPortsFixtures() {
     }
